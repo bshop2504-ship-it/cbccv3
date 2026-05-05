@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --navy: #093C5D;
+    --steel: #3B7597;
+    --aqua: #6FD1D7;
+    --light: #F5F5F5;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    overflow-x: hidden;
+  }
+
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background-color: #F5F5F5;
+    color: #093C5D;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: #6FD1D7;
+    color: #093C5D;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #F5F5F5;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #3B7597;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #093C5D;
+  }
+}
+
+@layer components {
+  .glass {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .glass-dark {
+    background: rgba(9, 60, 93, 0.3);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(111, 209, 215, 0.15);
+  }
+
+  .glass-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 8px 32px rgba(9, 60, 93, 0.08);
+  }
+
+  .text-gradient {
+    background: linear-gradient(135deg, #093C5D 0%, #3B7597 50%, #6FD1D7 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-light {
+    background: linear-gradient(135deg, #6FD1D7 0%, #F5F5F5 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .section-padding {
+    @apply px-4 sm:px-6 lg:px-12 xl:px-20 py-16 sm:py-24;
+  }
+
+  .hero-gradient {
+    background: linear-gradient(135deg, #093C5D 0%, #0d4d76 40%, #1a6699 70%, #3B7597 100%);
+  }
+
+  .mesh-bg {
+    background-color: #F5F5F5;
+    background-image:
+      radial-gradient(at 20% 20%, rgba(111, 209, 215, 0.15) 0px, transparent 50%),
+      radial-gradient(at 80% 80%, rgba(59, 117, 151, 0.1) 0px, transparent 50%),
+      radial-gradient(at 50% 50%, rgba(9, 60, 93, 0.05) 0px, transparent 50%);
+  }
+}
+
+@layer utilities {
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+  }
+}
