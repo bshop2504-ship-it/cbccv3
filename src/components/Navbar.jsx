@@ -18,7 +18,6 @@ const navLinks = [
       { label: "Education", path: "/education" },
       { label: "Membership", path: "/membership" },
       { label: "Contact", path: "/contact" },
-      { label: "Admin", path: "/cbccadmin" },
     ],
   },
 ];
@@ -127,29 +126,12 @@ export default function Navbar({ onLoginClick }) {
 
           {/* Right Actions */}
           <div className="flex items-center gap-3">
-            {isAuthenticated ? (
-              <div className="hidden sm:flex items-center gap-2">
-                <button
-                  onClick={() => navigate("/CBCCAdminPanel")}
-                  className="text-sm text-aqua hover:text-white transition-colors font-medium"
-                >
-                  Dashboard
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="px-4 py-2 rounded-lg border border-white/20 text-white/70 hover:text-white hover:border-white/40 text-sm transition-all"
-                >
-                  Logout
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={onLoginClick}
-                className="hidden sm:flex px-5 py-2 rounded-xl bg-aqua/20 border border-aqua/40 text-aqua hover:bg-aqua hover:text-navy font-medium text-sm transition-all duration-300"
-              >
-                Sign In
-              </button>
-            )}
+            <button
+              onClick={onLoginClick}
+              className="hidden sm:flex px-5 py-2 rounded-xl bg-aqua/20 border border-aqua/40 text-aqua hover:bg-aqua hover:text-navy font-medium text-sm transition-all duration-300"
+            >
+              Sign In
+            </button>
 
             <button
               onClick={() => setMobileOpen(!mobileOpen)}

@@ -230,6 +230,7 @@ export default function AdminPanel({ data, setData }) {
             <Input
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder="Admin"
             />
           </Field>
 
@@ -239,6 +240,7 @@ export default function AdminPanel({ data, setData }) {
               onChange={(e) =>
                 setForm((f) => ({ ...f, email: e.target.value }))
               }
+              placeholder="admin@cbcc.com"
             />
           </Field>
 
@@ -250,6 +252,7 @@ export default function AdminPanel({ data, setData }) {
                 onChange={(e) =>
                   setForm((f) => ({ ...f, password: e.target.value }))
                 }
+                placeholder="••••••••"
               />
             </Field>
           )}
