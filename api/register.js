@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required" });
     }
-
+    //CREATE USER EMAIL-AUTH
     const { data, error } = await supabase.auth.admin.createUser({
       email,
       password,
@@ -28,9 +28,23 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: error.message });
     }
 
+    //INSERT INTO userTB
+    const { error: insertError } = await supabase.from("userTB").insert([
+      {
+        auth_id: data.user.id,
+        name,
+        email,
+        role,
+      },
+    ]);
+
+    if (insertError) {
+      return res.status(400).json({ error: insertError.message });
+    }
+
     return res.status(200).json({
       user: data.user,
-      message: "User created successfully",
+      message: "User created and saved in userTB",
     });
   } catch (err) {
     console.error("Register API error:", err);

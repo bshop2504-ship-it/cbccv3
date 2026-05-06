@@ -11,7 +11,7 @@ import {
 } from "../assets/svg/Icons.jsx";
 
 import { loginAccount } from "../api/auth.js";
-
+import { supabase } from "../lib/supabaseClient";
 export default function LoginModal({ onClose, onLogin }) {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -26,12 +26,26 @@ export default function LoginModal({ onClose, onLogin }) {
     setLoading(true);
 
     try {
-      const data = await loginAccount(email, password);
+      const result = await loginAccount(email, password);
 
-      onLogin(data.user, data.session);
+      console.log("LOGIN RESULT:", result);
 
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      // DEBUG SESSION
+      const { data } = await supabase.auth.getSession();
+      console.log("SESSION AFTER LOGIN:", data.session);
+
+      if (!data.session) {
+        throw new Error("No session found");
+      }
+      onLogin?.(result.user, data.session);
+      onClose?.();
       navigate("/cbccadmin");
     } catch (err) {
+      console.error(err);
       setError(err.message || "Login failed");
     } finally {
       setLoading(false);

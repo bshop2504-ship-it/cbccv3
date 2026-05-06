@@ -7,7 +7,7 @@ import LivePanel from "../components/admin/LivePanel.jsx";
 import ServicePanel from "../components/admin/ServicePanel.jsx";
 import { Icon } from "../assets/svg/Icon.jsx";
 import { StatCard } from "../components/UI.jsx";
-
+import LogoutModal from "../components/LogoutModal.jsx";
 // ─── Sidebar Nav Items ─────────────────────────────────────────────
 const NAV = [
   {
@@ -67,7 +67,7 @@ export default function CBCCAdminPanel() {
   const [live, setLive] = useState([]);
   const [activities, setActivities] = useState([]);
   const [admins, setAdmins] = useState([]);
-
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const stats = [
     {
       label: "Devotions",
@@ -265,6 +265,7 @@ export default function CBCCAdminPanel() {
           </nav>
 
           {/* Collapse toggle + Logout */}
+
           <div
             style={{
               padding: "12px 10px",
@@ -274,6 +275,30 @@ export default function CBCCAdminPanel() {
               gap: 6,
             }}
           >
+            {/* LOGOUT */}
+            <button
+              onClick={() => setLogoutOpen(true)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: sidebarOpen ? "flex-start" : "center",
+                gap: sidebarOpen ? 10 : 0,
+                width: "100%",
+                padding: "10px 14px",
+                borderRadius: 10,
+                border: "none",
+                background: "#E53E3E",
+                color: "#fff",
+                cursor: "pointer",
+                transition: "0.2s",
+              }}
+            >
+              <Icon.Logout />
+
+              {sidebarOpen && (
+                <span style={{ fontSize: 12, fontWeight: 600 }}>Logout</span>
+              )}
+            </button>
             <button
               onClick={() => setSidebarOpen((o) => !o)}
               style={{
@@ -432,6 +457,7 @@ export default function CBCCAdminPanel() {
             </AnimatePresence>
           </div>
         </div>
+        <LogoutModal isOpen={logoutOpen} onClose={() => setLogoutOpen(false)} />
       </div>
     </>
   );
