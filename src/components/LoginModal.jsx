@@ -34,7 +34,7 @@ export default function LoginModal({ onClose, onLogin }) {
         throw new Error(result.error);
       }
 
-      // DEBUG SESSION
+      // GET USER  SESSION
       const { data } = await supabase.auth.getSession();
       console.log("SESSION AFTER LOGIN:", data.session);
 

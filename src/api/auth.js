@@ -14,20 +14,28 @@ export const loginAccount = async (email, password) => {
     session: data.session,
   };
 };
-
 export const registerAccount = async (name, email, password, role) => {
   try {
+    //  get session
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      throw new Error("Not authenticated");
+    }
+
     const response = await fetch("/api/register", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({ name, email, password, role }),
     });
 
     const text = await response.text();
 
-    //  Handle empty response
     if (!text) {
       throw new Error("Empty server response");
     }
@@ -36,79 +44,20 @@ export const registerAccount = async (name, email, password, role) => {
     try {
       data = JSON.parse(text);
     } catch (err) {
-      console.error(" Invalid JSON response:", text);
+      console.error("Invalid JSON response:", text);
       throw new Error("Server returned invalid JSON");
     }
 
-    //  Handle API errors
     if (!response.ok) {
-      console.error(" API Error:", data);
       throw new Error(data?.error || `Request failed (${response.status})`);
     }
 
-    // Success
     return {
       success: true,
       user: data.user,
       message: data.message,
     };
   } catch (err) {
-    console.error(" registerAccount error:", err.message);
-
-    return {
-      success: false,
-      error: err.message,
-    };
-  }
-};
-// export const loginAccount = async (email, password) => {
-//   const response = await fetch("/api/login", {
-//     method: "POST",
-//     headers: {
-//       "Content-Type": "application/json",
-//     },
-//     body: JSON.stringify({ email, password }),
-//   });
-
-//   const text = await response.text();
-
-//   let data;
-//   try {
-//     data = JSON.parse(text);
-//   } catch {
-//     throw new Error("Invalid server response");
-//   }
-
-//   if (!response.ok) {
-//     throw new Error(data?.error || "Login failed");
-//   }
-
-//   return data;
-// };
-export const fetchUsers = async () => {
-  try {
-    const res = await fetch("/api/users");
-
-    const text = await res.text();
-
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      throw new Error("Invalid JSON response");
-    }
-
-    if (!res.ok) {
-      throw new Error(data?.error || "Failed to fetch users");
-    }
-
-    return {
-      success: true,
-      users: data.users,
-    };
-  } catch (err) {
-    console.error(" fetchUsers error:", err.message);
-
     return {
       success: false,
       error: err.message,
@@ -170,4 +119,34 @@ export const deleteUser = async (auth_id, requester_auth_id) => {
   }
 
   return { success: true };
+};
+export const fetchUsers = async () => {
+  try {
+    const res = await fetch("/api/users");
+
+    const text = await res.text();
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error("Invalid JSON response");
+    }
+
+    if (!res.ok) {
+      throw new Error(data?.error || "Failed to fetch users");
+    }
+
+    return {
+      success: true,
+      users: data.users,
+    };
+  } catch (err) {
+    console.error(" fetchUsers error:", err.message);
+
+    return {
+      success: false,
+      error: err.message,
+    };
+  }
 };
