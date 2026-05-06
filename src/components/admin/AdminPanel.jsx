@@ -305,15 +305,17 @@ export default function AdminPanel({ data, setData }) {
             />
           </Field>
 
-          <Field label="Email" error={errors.email}>
-            <Input
-              value={form.email}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, email: e.target.value }))
-              }
-            />
-          </Field>
-
+          {!editing && (
+            <Field label="Email" error={errors.email}>
+              <Input
+                value={form.email}
+                disabled={!!editing}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, email: e.target.value }))
+                }
+              />
+            </Field>
+          )}
           {!editing && (
             <Field label="Password" error={errors.password}>
               <Input

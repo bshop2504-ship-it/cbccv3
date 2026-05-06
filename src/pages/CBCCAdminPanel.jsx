@@ -8,34 +8,7 @@ import ServicePanel from "../components/admin/ServicePanel.jsx";
 import { Icon } from "../assets/svg/Icon.jsx";
 import { StatCard } from "../components/UI.jsx";
 import LogoutModal from "../components/LogoutModal.jsx";
-// ─── Sidebar Nav Items ─────────────────────────────────────────────
-const NAV = [
-  {
-    id: "devotion",
-    label: "Daily Devotion",
-    icon: <Icon.Book />,
-    color: "#6FD1D7",
-  },
-  {
-    id: "services",
-    label: "Weekly Services",
-    icon: <Icon.Calendar />,
-    color: "#3B7597",
-  },
-  { id: "live", label: "Live Service", icon: <Icon.Radio />, color: "#E53E3E" },
-  {
-    id: "activities",
-    label: "Recent Activities",
-    icon: <Icon.Camera />,
-    color: "#093C5D",
-  },
-  {
-    id: "admins",
-    label: "Admin Users",
-    icon: <Icon.Users />,
-    color: "#3B7597",
-  },
-];
+import { fetchCurrentUser } from "../api/currentUser.js";
 
 // ─── GLOBAL STYLES ─────────────────────────────────────────────────
 const globalStyles = `
@@ -48,7 +21,7 @@ const globalStyles = `
 
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(9,60,93,0.15); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb { background: rgba(6, 8, 9, 0.15); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: rgba(9,60,93,0.3); }
 
   table tr:last-child td { border-bottom: none; }
@@ -68,6 +41,8 @@ export default function CBCCAdminPanel() {
   const [activities, setActivities] = useState([]);
   const [admins, setAdmins] = useState([]);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const isSuperAdmin = currentUser?.role === "Super Admin";
   const stats = [
     {
       label: "Devotions",
@@ -100,8 +75,56 @@ export default function CBCCAdminPanel() {
       color: "#3B7597",
     },
   ];
+  const NAV = [
+    {
+      id: "devotion",
+      label: "Daily Devotion",
+      icon: <Icon.Book />,
+      color: "#6FD1D7",
+    },
+    {
+      id: "services",
+      label: "Weekly Services",
+      icon: <Icon.Calendar />,
+      color: "#3B7597",
+    },
+    {
+      id: "live",
+      label: "Live Service",
+      icon: <Icon.Radio />,
+      color: "#E53E3E",
+    },
+    {
+      id: "activities",
+      label: "Recent Activities",
+      icon: <Icon.Camera />,
+      color: "#093C5D",
+    },
+
+    ...(isSuperAdmin
+      ? [
+          {
+            id: "admins",
+            label: "Admin Users",
+            icon: <Icon.Users />,
+            color: "#3B7597",
+          },
+        ]
+      : []),
+  ];
 
   const activeNav = NAV.find((n) => n.id === activePanel);
+  // =====================
+  // LOAD CURRENT USER
+  // =====================
+  useEffect(() => {
+    const loadMe = async () => {
+      const user = await fetchCurrentUser();
+      setCurrentUser(user);
+    };
+
+    loadMe();
+  }, []);
 
   return (
     <>
@@ -450,7 +473,7 @@ export default function CBCCAdminPanel() {
                 {activePanel === "activities" && (
                   <ActivitiesPanel data={activities} setData={setActivities} />
                 )}
-                {activePanel === "admins" && (
+                {activePanel === "admins" && isSuperAdmin && (
                   <AdminPanel data={admins} setData={setAdmins} />
                 )}
               </motion.div>
