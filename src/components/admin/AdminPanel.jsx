@@ -28,7 +28,7 @@ import {
   formGrid,
 } from "../AdminSharedSubComponents";
 
-const ROLES = ["Super Admin", "Editor"];
+const ROLES = ["Super Admin", "Editor", "Elder"];
 
 export default function AdminPanel({ data, setData }) {
   const [modalOpen, setModalOpen] = useState(false);
@@ -220,8 +220,22 @@ export default function AdminPanel({ data, setData }) {
       />
 
       {/* TABLE */}
-      <div style={tableStyles.wrapper}>
-        <table style={tableStyles.table}>
+      <div
+        style={{
+          ...tableStyles.wrapper,
+          width: "100%",
+          overflowX: "auto",
+          overflowY: "hidden",
+          WebkitOverflowScrolling: "touch",
+          scrollbarWidth: "thin",
+        }}
+      >
+        <table
+          style={{
+            ...tableStyles.table,
+            minWidth: 700,
+          }}
+        >
           <thead>
             <tr>
               {["Admin", "Email", "Role", "Action"].map((h) => (
@@ -293,6 +307,7 @@ export default function AdminPanel({ data, setData }) {
 
       {/* MODAL */}
       <Modal
+        icon={<Icon.Users />}
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         title={editing ? "Edit Admin" : "Add Admin"}
@@ -302,6 +317,7 @@ export default function AdminPanel({ data, setData }) {
             <Input
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder="John Doe"
             />
           </Field>
 
@@ -313,6 +329,7 @@ export default function AdminPanel({ data, setData }) {
                 onChange={(e) =>
                   setForm((f) => ({ ...f, email: e.target.value }))
                 }
+                placeholder="johndoe@cbcc.com"
               />
             </Field>
           )}

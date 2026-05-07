@@ -9,7 +9,7 @@ import { Icon } from "../assets/svg/Icon.jsx";
 import { StatCard } from "../components/UI.jsx";
 import LogoutModal from "../components/LogoutModal.jsx";
 import { fetchCurrentUser } from "../api/currentUser.js";
-
+import cbcclogo from "../assets/images/cbcclogo.webp";
 // ─── GLOBAL STYLES ─────────────────────────────────────────────────
 const globalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500;600&display=swap');
@@ -146,10 +146,16 @@ export default function CBCCAdminPanel() {
             width: sidebarOpen ? 240 : 64,
             flexShrink: 0,
             background: "#093C5D",
+
             display: "flex",
             flexDirection: "column",
+
             transition: "width 0.3s ease",
-            overflow: "hidden",
+
+            height: "100dvh",
+            overflowY: "auto",
+            overflowX: "hidden",
+
             zIndex: 20,
           }}
         >
@@ -177,7 +183,13 @@ export default function CBCCAdminPanel() {
                 flexShrink: 0,
               }}
             >
-              <Icon.Cross />
+              <img
+                src={cbcclogo}
+                alt="CBCC Logo"
+                width="40"
+                height="40"
+                className="rounded-full object-cover"
+              />
             </div>
             {sidebarOpen && (
               <motion.div
@@ -216,6 +228,9 @@ export default function CBCCAdminPanel() {
           <nav
             style={{
               flex: 1,
+              minHeight: 0,
+              overflowY: "auto",
+
               padding: "14px 10px",
               display: "flex",
               flexDirection: "column",
@@ -293,9 +308,16 @@ export default function CBCCAdminPanel() {
             style={{
               padding: "12px 10px",
               borderTop: "1px solid rgba(255,255,255,0.08)",
+
               display: "flex",
               flexDirection: "column",
               gap: 6,
+
+              flexShrink: 0,
+              background: "#093C5D",
+
+              position: "sticky",
+              bottom: 0,
             }}
           >
             {/* LOGOUT */}
@@ -327,20 +349,37 @@ export default function CBCCAdminPanel() {
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 10,
+                justifyContent: sidebarOpen ? "flex-start" : "center",
+
+                width: "100%",
+                minHeight: 44,
+
+                gap: sidebarOpen ? 10 : 0,
                 padding: "10px 14px",
+
                 borderRadius: 10,
                 border: "none",
-                background: "rgba(255,255,255,0.05)",
-                color: "rgba(255,255,255,0.4)",
+
+                background: "rgba(255,255,255,0.08)",
+                color: "#fff",
+
                 cursor: "pointer",
                 transition: "all 0.2s",
-                justifyContent: sidebarOpen ? "flex-start" : "center",
+
+                flexShrink: 0,
               }}
             >
               <Icon.Menu />
+
               {sidebarOpen && (
-                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
+                <span
+                  style={{
+                    fontSize: 12,
+                    color: "#fff",
+                    fontWeight: 500,
+                    whiteSpace: "nowrap",
+                  }}
+                >
                   Collapse
                 </span>
               )}
@@ -372,43 +411,10 @@ export default function CBCCAdminPanel() {
               borderBottom: "1px solid rgba(9,60,93,0.08)",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ color: activeNav?.color || "#3B7597" }}>
-                {activeNav?.icon}
-              </span>
-              <h1
-                style={{
-                  fontFamily: "Playfair Display, serif",
-                  fontSize: 18,
-                  fontWeight: 700,
-                  color: "#093C5D",
-                }}
-              >
-                {activeNav?.label}
-              </h1>
-            </div>
+            <div
+              style={{ display: "flex", alignItems: "center", gap: 10 }}
+            ></div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span
-                  style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: "50%",
-                    background: "#4CAF50",
-                    display: "inline-block",
-                    boxShadow: "0 0 0 3px rgba(76,175,80,0.2)",
-                  }}
-                />
-                <span
-                  style={{
-                    fontFamily: "DM Mono, monospace",
-                    fontSize: 11,
-                    color: "rgba(9,60,93,0.45)",
-                  }}
-                >
-                  System Live
-                </span>
-              </div>
               <div
                 style={{
                   width: 34,
@@ -424,7 +430,7 @@ export default function CBCCAdminPanel() {
                   fontSize: 11,
                 }}
               >
-                SA
+                CBCC
               </div>
             </div>
           </div>
@@ -436,8 +442,6 @@ export default function CBCCAdminPanel() {
               style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
-                gap: 12,
-                marginBottom: 28,
               }}
             >
               {stats.map((s, i) => (
@@ -446,9 +450,7 @@ export default function CBCCAdminPanel() {
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.07 }}
-                >
-                  <StatCard {...s} />
-                </motion.div>
+                ></motion.div>
               ))}
             </div>
 
