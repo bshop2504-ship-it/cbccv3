@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 
 import MainLayout from "./layouts/MainLayout.jsx";
 import LoginModal from "./components/LoginModal.jsx";
+import SuperAdminModal from "./components/SuperAdminModal.jsx";
 import SkeletonCard from "./components/SkeletonCard.jsx";
 
 // Lazy-loaded pages
@@ -16,7 +17,7 @@ const Membership = lazy(() => import("./pages/Membership.jsx"));
 const Contact = lazy(() => import("./pages/Contact.jsx"));
 const CBCCUpdates = lazy(() => import("./pages/CBCCUpdates.jsx"));
 const CBCCAdminPanel = lazy(() => import("./pages/CBCCAdminPanel.jsx"));
-
+const CBCCEldersPanel = lazy(() => import("./pages/CBCCEldersPanel.jsx"));
 // Auth Context
 export const AuthContext = createContext(null);
 
@@ -28,10 +29,20 @@ const Lazy = ({ children }) => (
 export default function App() {
   const [showLogin, setShowLogin] = useState(false);
   const [user, setUser] = useState(null);
+  const [showSuperAdminModal, setSuperAdminModal] = useState(false);
 
-  const handleLogin = (userData) => {
+  const handleLogin = (userData, session, role) => {
     setUser(userData);
     setShowLogin(false);
+
+    if (role === "Super Admin") {
+      setSuperAdminModal(true);
+      return;
+    }
+  };
+  const handleSuperAdminModal = (userData) => {
+    setUser(userData);
+    setSuperAdminModal(false);
   };
 
   return (
@@ -126,10 +137,25 @@ export default function App() {
             </Lazy>
           }
         />
+        {/* ELDERS */}
+        <Route
+          path="cbccelders"
+          element={
+            <Lazy>
+              <CBCCEldersPanel />
+            </Lazy>
+          }
+        />
       </Routes>
 
       {showLogin && (
         <LoginModal onClose={() => setShowLogin(false)} onLogin={handleLogin} />
+      )}
+      {showSuperAdminModal && (
+        <SuperAdminModal
+          isOpen={showSuperAdminModal}
+          onClose={() => setSuperAdminModal(false)}
+        />
       )}
     </AuthContext.Provider>
   );

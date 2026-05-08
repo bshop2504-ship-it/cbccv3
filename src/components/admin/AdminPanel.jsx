@@ -28,7 +28,7 @@ import {
   formGrid,
 } from "../AdminSharedSubComponents";
 
-const ROLES = ["Super Admin", "Editor", "Elder"];
+const ROLES = ["Editor", "Elder", "Super Admin"];
 
 export default function AdminPanel({ data, setData }) {
   const [modalOpen, setModalOpen] = useState(false);
@@ -42,7 +42,7 @@ export default function AdminPanel({ data, setData }) {
     name: "",
     email: "",
     password: "",
-    role: "Viewer",
+    role: "Editor",
   };
 
   const [form, setForm] = useState(empty);
@@ -194,6 +194,7 @@ export default function AdminPanel({ data, setData }) {
   const roleColor = {
     "Super Admin": "#E53E3E",
     Editor: "#6FD1D7",
+    Elder: "#c7d76f",
   };
 
   const avatar = (name = "") =>

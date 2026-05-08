@@ -9,7 +9,7 @@ import {
   EyeOffIcon,
   CrossIcon,
 } from "../assets/svg/Icons.jsx";
-
+import { fetchCurrentUser } from "../api/currentUser.js";
 import { loginAccount } from "../api/auth.js";
 import { supabase } from "../lib/supabaseClient";
 export default function LoginModal({ onClose, onLogin }) {
@@ -28,22 +28,39 @@ export default function LoginModal({ onClose, onLogin }) {
     try {
       const result = await loginAccount(email, password);
 
-      console.log("LOGIN RESULT:", result);
-
       if (!result.success) {
         throw new Error(result.error);
       }
 
-      // GET USER  SESSION
       const { data } = await supabase.auth.getSession();
-      console.log("SESSION AFTER LOGIN:", data.session);
+      const session = data.session;
 
-      if (!data.session) {
+      if (!session) {
         throw new Error("No session found");
       }
-      onLogin?.(result.user, data.session);
+
+      //  USE YOUR API WRAPPER
+      const currentUser = await fetchCurrentUser();
+
+      if (!currentUser) {
+        throw new Error("Failed to load user profile");
+      }
+
+      const role = currentUser.role;
+
+      console.log("ROLE:", role);
+
+      onLogin?.(session.user, session, role);
       onClose?.();
-      navigate("/cbccadmin");
+
+      //  ROUTING
+      if (role === "Editor") {
+        navigate("/cbccadmin");
+      } else if (role === "Elder") {
+        navigate("/cbccelders");
+      } else {
+        navigate("/");
+      }
     } catch (err) {
       console.error(err);
       setError(err.message || "Login failed");
