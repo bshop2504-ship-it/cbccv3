@@ -6,7 +6,7 @@ import LogoutModal from "../components/LogoutModal.jsx";
 
 import { Icon } from "../assets/svg/Icon.jsx";
 
-import { fetchCurrentUser } from "../api/currentUser.js";
+// import { fetchCurrentUser } from "../api/currentUser.js";
 
 import cbcclogo from "../assets/images/cbcclogo.webp";
 
@@ -74,8 +74,6 @@ export default function CBCCAdminPanel() {
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
-  const isSuperAdmin = currentUser?.role === "Super Admin";
-
   // =====================
   // MOBILE DETECTION
   // =====================
@@ -117,17 +115,6 @@ export default function CBCCAdminPanel() {
       icon: <Icon.Book />,
       color: "#6FD1D7",
     },
-
-    ...(isSuperAdmin
-      ? [
-          {
-            id: "admins",
-            label: "Admin Users",
-            icon: <Icon.Users />,
-            color: "#3B7597",
-          },
-        ]
-      : []),
   ];
 
   return (
@@ -454,38 +441,6 @@ export default function CBCCAdminPanel() {
               >
                 {activePanel === "elderfiles" && (
                   <ElderFiles data={elderfile} setData={setElderfile} />
-                )}
-
-                {activePanel === "admins" && (
-                  <div
-                    style={{
-                      background: "#fff",
-                      borderRadius: 18,
-                      padding: isMobile ? 18 : 24,
-                      minHeight: 300,
-                      boxShadow: "0 4px 14px rgba(0,0,0,0.04)",
-                    }}
-                  >
-                    <h2
-                      style={{
-                        color: "#093C5D",
-                        fontSize: isMobile ? 18 : 22,
-                        fontWeight: 700,
-                        marginBottom: 12,
-                      }}
-                    >
-                      Admin Users
-                    </h2>
-
-                    <p
-                      style={{
-                        color: "#64748B",
-                        fontSize: 14,
-                      }}
-                    >
-                      Manage administrator accounts here.
-                    </p>
-                  </div>
                 )}
               </motion.div>
             </AnimatePresence>
