@@ -1,13 +1,15 @@
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --navy: #093C5D;
-    --steel: #3B7597;
-    --aqua: #6FD1D7;
-    --light: #F5F5F5;
+    --navy: #093c5d;
+    --steel: #3b7597;
+    --aqua: #6fd1d7;
+    --light: #f5f5f5;
   }
 
   * {
@@ -22,15 +24,15 @@
   }
 
   body {
-    font-family: 'DM Sans', system-ui, sans-serif;
-    background-color: #F5F5F5;
-    color: #093C5D;
+    font-family: "DM Sans", system-ui, sans-serif;
+    background-color: #f5f5f5;
+    color: #093c5d;
     overflow-x: hidden;
   }
 
   ::selection {
-    background: #6FD1D7;
-    color: #093C5D;
+    background: #6fd1d7;
+    color: #093c5d;
   }
 
   ::-webkit-scrollbar {
@@ -38,16 +40,16 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: #F5F5F5;
+    background: #f5f5f5;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #3B7597;
+    background: #3b7597;
     border-radius: 3px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #093C5D;
+    background: #093c5d;
   }
 }
 
@@ -75,14 +77,14 @@
   }
 
   .text-gradient {
-    background: linear-gradient(135deg, #093C5D 0%, #3B7597 50%, #6FD1D7 100%);
+    background: linear-gradient(135deg, #093c5d 0%, #3b7597 50%, #6fd1d7 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .text-gradient-light {
-    background: linear-gradient(135deg, #6FD1D7 0%, #F5F5F5 100%);
+    background: linear-gradient(135deg, #6fd1d7 0%, #f5f5f5 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -93,13 +95,23 @@
   }
 
   .hero-gradient {
-    background: linear-gradient(135deg, #093C5D 0%, #0d4d76 40%, #1a6699 70%, #3B7597 100%);
+    background: linear-gradient(
+      135deg,
+      #093c5d 0%,
+      #0d4d76 40%,
+      #1a6699 70%,
+      #3b7597 100%
+    );
   }
 
   .mesh-bg {
-    background-color: #F5F5F5;
+    background-color: #f5f5f5;
     background-image:
-      radial-gradient(at 20% 20%, rgba(111, 209, 215, 0.15) 0px, transparent 50%),
+      radial-gradient(
+        at 20% 20%,
+        rgba(111, 209, 215, 0.15) 0px,
+        transparent 50%
+      ),
       radial-gradient(at 80% 80%, rgba(59, 117, 151, 0.1) 0px, transparent 50%),
       radial-gradient(at 50% 50%, rgba(9, 60, 93, 0.05) 0px, transparent 50%);
   }
@@ -111,7 +123,12 @@
   }
 
   @keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-20px); }
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
   }
 }

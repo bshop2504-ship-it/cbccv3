@@ -5,11 +5,13 @@ import ActivitiesPanel from "../components/admin/ActivitiesPanel.jsx";
 import DevotionPanel from "../components/admin/DevotionPanel.jsx";
 import LivePanel from "../components/admin/LivePanel.jsx";
 import ServicePanel from "../components/admin/ServicePanel.jsx";
+import AnnouncementPanel from "../components/admin/AnnouncementPanel.jsx";
 import { Icon } from "../assets/svg/Icon.jsx";
-import { StatCard } from "../components/UI.jsx";
+
 import LogoutModal from "../components/LogoutModal.jsx";
 import { fetchCurrentUser } from "../api/currentUser.js";
 import cbcclogo from "../assets/images/cbcclogo.webp";
+
 // ─── GLOBAL STYLES ─────────────────────────────────────────────────
 const globalStyles = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500;600&display=swap');
@@ -37,44 +39,14 @@ export default function CBCCAdminPanel() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [devotions, setDevotions] = useState([]);
   const [services, setServices] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
   const [live, setLive] = useState([]);
   const [activities, setActivities] = useState([]);
   const [admins, setAdmins] = useState([]);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const isSuperAdmin = currentUser?.role === "Super Admin";
-  const stats = [
-    {
-      label: "Devotions",
-      value: devotions.length,
-      icon: <Icon.Book />,
-      color: "#6FD1D7",
-    },
-    {
-      label: "Services",
-      value: services.length,
-      icon: <Icon.Calendar />,
-      color: "#3B7597",
-    },
-    {
-      label: "Live Streams",
-      value: live.length,
-      icon: <Icon.Radio />,
-      color: "#E53E3E",
-    },
-    {
-      label: "Activities",
-      value: activities.length,
-      icon: <Icon.Camera />,
-      color: "#093C5D",
-    },
-    {
-      label: "Admins",
-      value: admins.length,
-      icon: <Icon.Users />,
-      color: "#3B7597",
-    },
-  ];
+
   const NAV = [
     {
       id: "devotion",
@@ -107,6 +79,12 @@ export default function CBCCAdminPanel() {
             id: "admins",
             label: "Admin Users",
             icon: <Icon.Users />,
+            color: "#3B7597",
+          },
+          {
+            id: "announcements",
+            label: "Announcements",
+            icon: <Icon.Radio />,
             color: "#3B7597",
           },
         ]
@@ -443,16 +421,7 @@ export default function CBCCAdminPanel() {
                 display: "grid",
                 gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
               }}
-            >
-              {stats.map((s, i) => (
-                <motion.div
-                  key={s.label}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.07 }}
-                ></motion.div>
-              ))}
-            </div>
+            ></div>
 
             {/* Panel content */}
             <AnimatePresence mode="wait">
@@ -477,6 +446,12 @@ export default function CBCCAdminPanel() {
                 )}
                 {activePanel === "admins" && isSuperAdmin && (
                   <AdminPanel data={admins} setData={setAdmins} />
+                )}
+                {activePanel === "announcements" && isSuperAdmin && (
+                  <AnnouncementPanel
+                    data={announcements}
+                    setData={setAnnouncements}
+                  />
                 )}
               </motion.div>
             </AnimatePresence>
