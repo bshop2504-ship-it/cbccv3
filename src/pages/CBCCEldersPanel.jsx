@@ -1,104 +1,121 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import AdminPanel from "../components/admin/AdminPanel.jsx";
-import ActivitiesPanel from "../components/admin/ActivitiesPanel.jsx";
-import DevotionPanel from "../components/admin/DevotionPanel.jsx";
-import LivePanel from "../components/admin/LivePanel.jsx";
-import ServicePanel from "../components/admin/ServicePanel.jsx";
-import { Icon } from "../assets/svg/Icon.jsx";
-import { StatCard } from "../components/UI.jsx";
+
+import ElderFiles from "../components/elders/ElderFiles.jsx";
 import LogoutModal from "../components/LogoutModal.jsx";
+
+import { Icon } from "../assets/svg/Icon.jsx";
+
 import { fetchCurrentUser } from "../api/currentUser.js";
+
 import cbcclogo from "../assets/images/cbcclogo.webp";
+
 // ─── GLOBAL STYLES ─────────────────────────────────────────────────
 const globalStyles = `
-  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500;600&display=swap');
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; }
-  body { font-family: 'DM Sans', system-ui, sans-serif; overflow: hidden; }
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500;600&display=swap');
 
-  @keyframes liveDot { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 
-  ::-webkit-scrollbar { width: 5px; height: 5px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(6, 8, 9, 0.15); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(9,60,93,0.3); }
+  html, body, #root {
+    height: 100%;
+  }
 
-  table tr:last-child td { border-bottom: none; }
-  button { font-family: 'DM Sans', sans-serif; }
-  input, textarea, select { font-family: 'DM Sans', sans-serif; }
-  textarea { resize: vertical; min-height: 80px; }
-  a { color: inherit; }
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    overflow: hidden;
+    background: #F0F4F8;
+  }
+
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(6, 8, 9, 0.15);
+    border-radius: 3px;
+  }
+
+  button {
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  input,
+  textarea,
+  select {
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
 `;
 
 // ─── MAIN COMPONENT ────────────────────────────────────────────────
-export default function CBCCEldersPanel() {
-  const [activePanel, setActivePanel] = useState("devotion");
+export default function CBCCAdminPanel() {
+  const [activePanel, setActivePanel] = useState("elderfiles");
+
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [devotions, setDevotions] = useState([]);
-  const [services, setServices] = useState([]);
-  const [live, setLive] = useState([]);
-  const [activities, setActivities] = useState([]);
-  const [admins, setAdmins] = useState([]);
+
+  const [elderfile, setElderfile] = useState([]);
+
   const [logoutOpen, setLogoutOpen] = useState(false);
+
   const [currentUser, setCurrentUser] = useState(null);
+
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
   const isSuperAdmin = currentUser?.role === "Super Admin";
-  const stats = [
-    {
-      label: "Devotions",
-      value: devotions.length,
-      icon: <Icon.Book />,
-      color: "#6FD1D7",
-    },
-    {
-      label: "Services",
-      value: services.length,
-      icon: <Icon.Calendar />,
-      color: "#3B7597",
-    },
-    {
-      label: "Live Streams",
-      value: live.length,
-      icon: <Icon.Radio />,
-      color: "#E53E3E",
-    },
-    {
-      label: "Activities",
-      value: activities.length,
-      icon: <Icon.Camera />,
-      color: "#093C5D",
-    },
-    {
-      label: "Admins",
-      value: admins.length,
-      icon: <Icon.Users />,
-      color: "#3B7597",
-    },
-  ];
+
+  // =====================
+  // MOBILE DETECTION
+  // =====================
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  // =====================
+  // LOAD CURRENT USER
+  // =====================
+  useEffect(() => {
+    const loadMe = async () => {
+      try {
+        const user = await fetchCurrentUser();
+        setCurrentUser(user);
+      } catch (err) {
+        console.error("Failed to fetch current user:", err);
+      }
+    };
+
+    loadMe();
+  }, []);
+
+  // =====================
+  // NAVIGATION
+  // =====================
   const NAV = [
     {
-      id: "devotion",
-      label: "Daily Devotion",
+      id: "elderfiles",
+      label: "Elders File",
       icon: <Icon.Book />,
       color: "#6FD1D7",
-    },
-    {
-      id: "services",
-      label: "Weekly Services",
-      icon: <Icon.Calendar />,
-      color: "#3B7597",
-    },
-    {
-      id: "live",
-      label: "Live Service",
-      icon: <Icon.Radio />,
-      color: "#E53E3E",
-    },
-    {
-      id: "activities",
-      label: "Recent Activities",
-      icon: <Icon.Camera />,
-      color: "#093C5D",
     },
 
     ...(isSuperAdmin
@@ -113,22 +130,10 @@ export default function CBCCEldersPanel() {
       : []),
   ];
 
-  const activeNav = NAV.find((n) => n.id === activePanel);
-  // =====================
-  // LOAD CURRENT USER
-  // =====================
-  useEffect(() => {
-    const loadMe = async () => {
-      const user = await fetchCurrentUser();
-      setCurrentUser(user);
-    };
-
-    loadMe();
-  }, []);
-
   return (
     <>
       <style>{globalStyles}</style>
+
       <div
         style={{
           display: "flex",
@@ -137,7 +142,7 @@ export default function CBCCEldersPanel() {
           overflow: "hidden",
         }}
       >
-        {/* ── Sidebar ── */}
+        {/* ───────────────── SIDEBAR ───────────────── */}
         <motion.aside
           initial={{ x: -240 }}
           animate={{ x: 0 }}
@@ -386,102 +391,108 @@ export default function CBCCEldersPanel() {
             </button>
           </div>
         </motion.aside>
-
-        {/* ── Main ── */}
+        {/* ───────────────── MAIN CONTENT ───────────────── */}
         <div
           style={{
             flex: 1,
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
-            minWidth: 0,
           }}
         >
-          {/* Top bar */}
+          {/* TOP BAR */}
           <div
             style={{
-              height: 60,
+              height: 64,
               flexShrink: 0,
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              padding: "0 28px",
+              padding: isMobile ? "0 14px" : "0 24px",
               background: "rgba(255,255,255,0.8)",
-              backdropFilter: "blur(16px)",
+              backdropFilter: "blur(12px)",
               borderBottom: "1px solid rgba(9,60,93,0.08)",
             }}
           >
+            <div></div>
+
             <div
-              style={{ display: "flex", alignItems: "center", gap: 10 }}
-            ></div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: "50%",
-                  background: "linear-gradient(135deg, #093C5D, #3B7597)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#6FD1D7",
-                  fontFamily: "DM Mono, monospace",
-                  fontWeight: 700,
-                  fontSize: 11,
-                }}
-              >
-                CBCC
-              </div>
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #093C5D, #3B7597)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#6FD1D7",
+                fontWeight: 700,
+                fontSize: 12,
+                flexShrink: 0,
+              }}
+            >
+              CBCC
             </div>
           </div>
 
-          {/* Scrollable content */}
-          <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
-            {/* Stats row — show always */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
-              }}
-            >
-              {stats.map((s, i) => (
-                <motion.div
-                  key={s.label}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.07 }}
-                ></motion.div>
-              ))}
-            </div>
-
-            {/* Panel content */}
+          {/* CONTENT */}
+          <div
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              padding: isMobile ? 14 : 24,
+            }}
+          >
+            {/* PANELS */}
             <AnimatePresence mode="wait">
               <motion.div
                 key={activePanel}
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.3 }}
+                transition={{ duration: 0.25 }}
               >
-                {activePanel === "devotion" && (
-                  <DevotionPanel data={devotions} setData={setDevotions} />
+                {activePanel === "elderfiles" && (
+                  <ElderFiles data={elderfile} setData={setElderfile} />
                 )}
-                {activePanel === "services" && (
-                  <ServicePanel data={services} setData={setServices} />
-                )}
-                {activePanel === "live" && (
-                  <LivePanel data={live} setData={setLive} />
-                )}
-                {activePanel === "activities" && (
-                  <ActivitiesPanel data={activities} setData={setActivities} />
-                )}
-                {activePanel === "admins" && isSuperAdmin && (
-                  <AdminPanel data={admins} setData={setAdmins} />
+
+                {activePanel === "admins" && (
+                  <div
+                    style={{
+                      background: "#fff",
+                      borderRadius: 18,
+                      padding: isMobile ? 18 : 24,
+                      minHeight: 300,
+                      boxShadow: "0 4px 14px rgba(0,0,0,0.04)",
+                    }}
+                  >
+                    <h2
+                      style={{
+                        color: "#093C5D",
+                        fontSize: isMobile ? 18 : 22,
+                        fontWeight: 700,
+                        marginBottom: 12,
+                      }}
+                    >
+                      Admin Users
+                    </h2>
+
+                    <p
+                      style={{
+                        color: "#64748B",
+                        fontSize: 14,
+                      }}
+                    >
+                      Manage administrator accounts here.
+                    </p>
+                  </div>
                 )}
               </motion.div>
             </AnimatePresence>
           </div>
         </div>
+
+        {/* LOGOUT MODAL */}
         <LogoutModal isOpen={logoutOpen} onClose={() => setLogoutOpen(false)} />
       </div>
     </>

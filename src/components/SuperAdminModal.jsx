@@ -35,8 +35,9 @@ export default function SuperAdminModal({ isOpen, onClose }) {
   const handleLogout = async () => {
     setLoading(true);
     try {
-      await supabase.auth.signOut();
       onClose?.();
+      await supabase.auth.signOut();
+      console.log("success logout");
     } catch (err) {
       console.error("Redirect error:", err);
     } finally {

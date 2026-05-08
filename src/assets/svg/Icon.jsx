@@ -261,4 +261,47 @@ export const Icon = {
       />
     </svg>
   ),
+  Folder: (props) => (
+    <svg width="20" height="20" fill="none" {...props}>
+      <path
+        d="M3 6a2 2 0 0 1 2-2h3l2 2h5a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+    </svg>
+  ),
+
+  File: (props) => (
+    <svg width="20" height="20" fill="none" {...props}>
+      <path
+        d="M7 3h6l4 4v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+    </svg>
+  ),
+
+  Upload: (props) => (
+    <svg width="20" height="20" fill="none" {...props}>
+      <path
+        d="M12 16V4m0 0-4 4m4-4 4 4M4 20h16"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
+
+  Download: (props) => (
+    <svg width="20" height="20" fill="none" {...props}>
+      <path
+        d="M12 4v12m0 0 4-4m-4 4-4-4M4 20h16"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ),
 };
