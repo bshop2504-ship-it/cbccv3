@@ -78,7 +78,7 @@ export default function AnnouncementPanel({ data, setData }) {
         label="Announcement Panel"
         count={data.length}
         onAdd={openAdd}
-        addLabel="Add Devotion"
+        addLabel="Add Announcement"
       />
       <div style={tableStyles.wrapper}>
         <table style={tableStyles.table}>

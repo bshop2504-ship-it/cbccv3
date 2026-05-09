@@ -6,7 +6,7 @@ import LogoutModal from "../components/LogoutModal.jsx";
 
 import { Icon } from "../assets/svg/Icon.jsx";
 
-// import { fetchCurrentUser } from "../api/currentUser.js";
+import { fetchCurrentUser } from "../api/currentUser.js";
 
 import cbcclogo from "../assets/images/cbcclogo.webp";
 
