@@ -34,28 +34,46 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing file id" });
     }
 
-    // OPTIONAL: get file first (for storage cleanup later)
+    // Get file info first
     const { data: fileRow, error: fetchError } = await supabase
       .from("elder-storage_tb")
       .select("file_url")
       .eq("id", id)
       .single();
 
-    if (fetchError) {
+    if (fetchError || !fileRow) {
       return res.status(404).json({ error: "File not found" });
     }
 
+    // -----------------------------
+    // EXTRACT PATH FROM URL
+    // -----------------------------
+    const bucketName = "cbcc-bucket";
+    const fileUrl = fileRow.file_url;
+
+    const path = fileUrl.split(`/storage/v1/object/public/${bucketName}/`)[1];
+
+    if (path) {
+      const { error: storageError } = await supabase.storage
+        .from(bucketName)
+        .remove([path]);
+
+      if (storageError) {
+        console.error("Storage delete error:", storageError.message);
+      }
+    }
+
     // DELETE DB ROW
-    const { error } = await supabase
+    const { error: deleteError } = await supabase
       .from("elder-storage_tb")
       .delete()
       .eq("id", id);
 
-    if (error) throw error;
+    if (deleteError) throw deleteError;
 
     return res.status(200).json({
       success: true,
-      message: "File deleted successfully",
+      message: "File deleted successfully (DB + Storage)",
       deletedFile: fileRow,
     });
   } catch (err) {

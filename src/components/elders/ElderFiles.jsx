@@ -94,21 +94,19 @@ export default function ElderFiles({ data, setData }) {
   // ───────────────────────────────────────────────────────────
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
-
     if (!file) return;
 
     const url = URL.createObjectURL(file);
 
     setForm((prev) => ({
       ...prev,
-      file,
+      file, // overwrite old file
       fileUrl: url,
       fileName: file.name,
       fileType: getFileType(file),
       fileSize: formatBytes(file.size),
     }));
   };
-
   // ───────────────────────────────────────────────────────────
   // VALIDATE
   // ───────────────────────────────────────────────────────────
@@ -125,7 +123,10 @@ export default function ElderFiles({ data, setData }) {
 
     return e;
   };
-
+  const refreshData = async () => {
+    const files = await fetchElderFiles();
+    setData(files);
+  };
   // ───────────────────────────────────────────────────────────
   // SAVE
   // ───────────────────────────────────────────────────────────
@@ -145,8 +146,8 @@ export default function ElderFiles({ data, setData }) {
           id: editing.id,
           title: form.title,
           description: form.description,
+          file: form.file,
         });
-
         const updated = result.data;
 
         setData((prev) =>
@@ -168,13 +169,13 @@ export default function ElderFiles({ data, setData }) {
           ),
         );
       } else {
-        const uploaded = await handleUpload(form);
-
-        setData((prev) => [uploaded, ...prev]);
+        await handleUpload(form);
       }
 
       setModalOpen(false);
       setForm(empty);
+
+      await refreshData();
     } catch (err) {
       console.error(err);
       alert(err.message);
@@ -201,43 +202,51 @@ export default function ElderFiles({ data, setData }) {
   // ───────────────────────────────────────────────────────────
   // LOAD FILES
   // ───────────────────────────────────────────────────────────
+  const formatFiles = (result) => {
+    return result.map((item) => ({
+      ...item,
+      fileUrl: item.file_url,
+      fileName: item.file_name,
+      fileType: item.mime_type?.startsWith("image/")
+        ? "image"
+        : item.mime_type?.startsWith("video/")
+          ? "video"
+          : "file",
+      fileSize: formatBytes(item.file_size),
+      uploadedBy: item.userTB?.name || item.userTB?.email || "Unknown User",
+    }));
+  };
   useEffect(() => {
-    const load = async () => {
+    let isMounted = true;
+
+    const loadFiles = async () => {
       try {
         setLoadingFiles(true);
 
         const mode = filter === "all" ? "all" : "mine";
-
         const result = await fetchElderFiles(mode);
 
-        const formatted = result.map((item) => ({
-          ...item,
-          fileUrl: item.file_url,
-          fileName: item.file_name,
+        if (!isMounted) return;
 
-          fileType: item.mime_type?.startsWith("image/")
-            ? "image"
-            : item.mime_type?.startsWith("video/")
-              ? "video"
-              : "file",
-
-          fileSize: formatBytes(item.file_size),
-
-          uploadedBy: item.userTB?.name || item.userTB?.email || "Unknown User",
-        }));
-
-        setData(formatted);
+        setData(formatFiles(result));
       } catch (err) {
-        console.error(err);
-        alert(err.message);
+        if (isMounted) {
+          console.error(err);
+          alert(err.message);
+        }
       } finally {
-        setLoadingFiles(false);
+        if (isMounted) {
+          setLoadingFiles(false);
+        }
       }
     };
 
-    load();
-  }, [filter]);
+    loadFiles();
 
+    return () => {
+      isMounted = false;
+    };
+  }, [filter]);
   return (
     <div>
       {/* HEADER */}
@@ -808,7 +817,9 @@ export default function ElderFiles({ data, setData }) {
                 justifyContent: "center",
                 gap: 12,
                 background: "rgba(9,60,93,0.03)",
+                cursor: "pointer",
               }}
+              onClick={() => document.getElementById("fileUpload").click()}
             >
               <input
                 type="file"
@@ -818,57 +829,47 @@ export default function ElderFiles({ data, setData }) {
                 onChange={handleFileChange}
               />
 
-              {!form.fileUrl && (
-                <label
-                  htmlFor="fileUpload"
+              {/* ICON */}
+              <div
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 20,
+                  background: "rgba(9,60,93,0.08)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Icon.Upload />
+              </div>
+
+              {/* TEXT */}
+              <div style={{ textAlign: "center" }}>
+                <p
                   style={{
-                    cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: 12,
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: "#093C5D",
+                    marginBottom: 4,
                   }}
                 >
-                  <div
-                    style={{
-                      width: 64,
-                      height: 64,
-                      borderRadius: 20,
-                      background: "rgba(9,60,93,0.08)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Icon.Upload />
-                  </div>
+                  {form.fileUrl ? "Replace File" : "Click to upload"}
+                </p>
 
-                  <div style={{ textAlign: "center" }}>
-                    <p
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 700,
-                        color: "#093C5D",
-                        marginBottom: 4,
-                      }}
-                    >
-                      Click to upload
-                    </p>
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "rgba(9,60,93,0.5)",
+                  }}
+                >
+                  Images, videos, PDF, DOCX, XLSX, PPT
+                </span>
+              </div>
 
-                    <span
-                      style={{
-                        fontSize: 11,
-                        color: "rgba(9,60,93,0.5)",
-                      }}
-                    >
-                      Images, videos, PDF, DOCX, XLSX, PPT
-                    </span>
-                  </div>
-                </label>
-              )}
-
+              {/* FILE INFO (ONLY IF EXISTS) */}
               {form.fileUrl && (
-                <div style={{ textAlign: "center" }}>
+                <div style={{ marginTop: 10, textAlign: "center" }}>
                   <p
                     style={{
                       fontWeight: 700,
@@ -879,12 +880,7 @@ export default function ElderFiles({ data, setData }) {
                     {form.fileName}
                   </p>
 
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: "rgba(9,60,93,0.5)",
-                    }}
-                  >
+                  <span style={{ fontSize: 12, color: "rgba(9,60,93,0.5)" }}>
                     {form.fileSize}
                   </span>
                 </div>
