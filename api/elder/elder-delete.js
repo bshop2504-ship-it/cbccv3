@@ -7,14 +7,21 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   if (req.method !== "DELETE") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({
+      error: "Method not allowed",
+    });
   }
 
   try {
+    // ─────────────────────────────────────
+    // AUTH
+    // ─────────────────────────────────────
     const authHeader = req.headers.authorization;
 
     if (!authHeader?.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Missing auth token" });
+      return res.status(401).json({
+        error: "Missing auth token",
+      });
     }
 
     const token = authHeader.split(" ")[1];
@@ -25,59 +32,75 @@ export default async function handler(req, res) {
     } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
-      return res.status(401).json({ error: "Invalid user" });
+      return res.status(401).json({
+        error: "Invalid user",
+      });
     }
 
+    // ─────────────────────────────────────
+    // GET FILE ID
+    // ─────────────────────────────────────
     const { id } = req.body;
 
     if (!id) {
-      return res.status(400).json({ error: "Missing file id" });
+      return res.status(400).json({
+        error: "Missing file id",
+      });
     }
 
-    // Get file info first
+    // ─────────────────────────────────────
+    // GET FILE DATA
+    // ─────────────────────────────────────
     const { data: fileRow, error: fetchError } = await supabase
       .from("elder-storage_tb")
-      .select("file_url")
+      .select("*")
       .eq("id", id)
       .single();
 
     if (fetchError || !fileRow) {
-      return res.status(404).json({ error: "File not found" });
+      return res.status(404).json({
+        error: "File not found",
+      });
     }
 
-    // -----------------------------
-    // EXTRACT PATH FROM URL
-    // -----------------------------
-    const bucketName = "cbcc-bucket";
-    const fileUrl = fileRow.file_url;
-
-    const path = fileUrl.split(`/storage/v1/object/public/${bucketName}/`)[1];
-
-    if (path) {
+    // ─────────────────────────────────────
+    // DELETE FILE FROM STORAGE
+    // ─────────────────────────────────────
+    if (fileRow.file_path) {
       const { error: storageError } = await supabase.storage
-        .from(bucketName)
-        .remove([path]);
+        .from("cbcc-bucket")
+        .remove([fileRow.file_path]);
 
       if (storageError) {
         console.error("Storage delete error:", storageError.message);
       }
     }
 
-    // DELETE DB ROW
+    // ─────────────────────────────────────
+    // DELETE DATABASE RECORD
+    // ─────────────────────────────────────
     const { error: deleteError } = await supabase
       .from("elder-storage_tb")
       .delete()
       .eq("id", id);
 
-    if (deleteError) throw deleteError;
+    if (deleteError) {
+      throw deleteError;
+    }
 
+    // ─────────────────────────────────────
+    // SUCCESS
+    // ─────────────────────────────────────
     return res.status(200).json({
       success: true,
-      message: "File deleted successfully (DB + Storage)",
+      message: "File deleted successfully",
       deletedFile: fileRow,
     });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: err.message });
+
+    return res.status(500).json({
+      error: err.message,
+    });
   }
 }

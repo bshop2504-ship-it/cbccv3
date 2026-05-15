@@ -69,6 +69,7 @@ export default function ElderFiles({ data, setData }) {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [filter, setFilter] = useState("all");
   const [loadingFiles, setLoadingFiles] = useState(false);
+  const [deletingFiles, setDeletingFiles] = useState(false);
   // ───────────────────────────────────────────────────────────
   // OPEN ADD
   // ───────────────────────────────────────────────────────────
@@ -84,11 +85,17 @@ export default function ElderFiles({ data, setData }) {
   // ───────────────────────────────────────────────────────────
   const openEdit = (item) => {
     setEditing(item);
-    setForm(item);
+
+    setForm({
+      ...item,
+
+      // IMPORTANT
+      file: null,
+    });
+
     setErrors({});
     setModalOpen(true);
   };
-
   // ───────────────────────────────────────────────────────────
   // FILE CHANGE
   // ───────────────────────────────────────────────────────────
@@ -141,34 +148,73 @@ export default function ElderFiles({ data, setData }) {
 
       setUploading(true);
 
+      // ─────────────────────────────
+      // EDIT EXISTING FILE
+      // ─────────────────────────────
       if (editing) {
+        let base64File = null;
+
+        // CONVERT NEW FILE TO BASE64
+        if (form.file instanceof File) {
+          base64File = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+
+            reader.readAsDataURL(form.file);
+
+            reader.onload = () => {
+              resolve(reader.result.split(",")[1]);
+            };
+
+            reader.onerror = (error) => reject(error);
+          });
+        }
+
         const result = await updateElderFile({
           id: editing.id,
           title: form.title,
           description: form.description,
-          file: form.file,
+
+          // OLD FILE PATH
+          old_file_path: editing.file_path,
+
+          // NEW FILE
+          file: base64File,
+          file_name: form.file?.name,
+          file_size: form.file?.size,
+          mime_type: form.file?.type,
         });
+
         const updated = result.data;
 
+        // UPDATE UI
         setData((prev) =>
           prev.map((item) =>
             item.id === updated.id
               ? {
                   ...item,
                   ...updated,
+
+                  file_path: updated.file_path,
                   fileUrl: updated.file_url,
                   fileName: updated.file_name,
+
                   fileType: updated.mime_type?.startsWith("image/")
                     ? "image"
                     : updated.mime_type?.startsWith("video/")
                       ? "video"
                       : "file",
+
                   fileSize: formatBytes(updated.file_size),
                 }
               : item,
           ),
         );
-      } else {
+      }
+
+      // ─────────────────────────────
+      // ADD NEW FILE
+      // ─────────────────────────────
+      else {
         await handleUpload(form);
       }
 
@@ -178,17 +224,17 @@ export default function ElderFiles({ data, setData }) {
       await refreshData();
     } catch (err) {
       console.error(err);
-      alert(err.message);
+      alert(err.message || "Failed to save file");
     } finally {
       setUploading(false);
     }
   };
-
   // ───────────────────────────────────────────────────────────
   // REMOVE
   // ───────────────────────────────────────────────────────────
   const remove = async (id) => {
     try {
+      setDeletingFiles(true);
       await deleteElderFile({ id });
 
       setData((d) => d.filter((x) => x.id !== id));
@@ -196,6 +242,8 @@ export default function ElderFiles({ data, setData }) {
     } catch (err) {
       console.error(err);
       alert(err.message || "Failed to delete file");
+    } finally {
+      setDeletingFiles(false);
     }
   };
 
@@ -205,14 +253,20 @@ export default function ElderFiles({ data, setData }) {
   const formatFiles = (result) => {
     return result.map((item) => ({
       ...item,
+
+      file_path: item.file_path, // ADD THIS
+
       fileUrl: item.file_url,
       fileName: item.file_name,
+
       fileType: item.mime_type?.startsWith("image/")
         ? "image"
         : item.mime_type?.startsWith("video/")
           ? "video"
           : "file",
+
       fileSize: formatBytes(item.file_size),
+
       uploadedBy: item.userTB?.name || item.userTB?.email || "Unknown User",
     }));
   };
@@ -482,14 +536,15 @@ export default function ElderFiles({ data, setData }) {
 
                     <button
                       onClick={() => setDeleteTarget(item)}
+                      disabled={deletingFiles}
                       style={{
                         width: 38,
                         height: 38,
                         borderRadius: 12,
                         border: "none",
                         background: "rgba(255,255,255,0.9)",
-                        backdropFilter: "blur(8px)",
-                        cursor: "pointer",
+                        cursor: deletingFiles ? "not-allowed" : "pointer",
+                        opacity: deletingFiles ? 0.5 : 1,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -936,6 +991,12 @@ export default function ElderFiles({ data, setData }) {
         onConfirm={() => remove(deleteTarget?.id)}
         itemName={deleteTarget?.title}
       />
+
+      {deletingFiles && (
+        <p style={{ color: "#E53E3E", fontWeight: 600, marginTop: 10 }}>
+          Deleting file...
+        </p>
+      )}
     </div>
   );
 }
