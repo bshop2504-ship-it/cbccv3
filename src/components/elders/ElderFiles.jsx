@@ -1,21 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { Icon } from "../../assets/svg/Icon";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { handleUpload } from "../../api/elder/upload";
 import { fetchElderFiles } from "../../api/elder/select";
 import { updateElderFile } from "../../api/elder/update";
-import {
-  Field,
-  Input,
-  Modal,
-  ConfirmDelete,
-  btnStyles,
-} from "../AdminSharedComponents";
+import { deleteElderFile } from "../../api/elder/delete";
+import { Field, Input, Modal, ConfirmDelete } from "../AdminSharedComponents";
 
 import {
   SectionHeader,
-  ModalFooter,
   EmptyState,
   formGrid,
 } from "../AdminSharedSubComponents";
@@ -23,8 +17,6 @@ import {
 // ─────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────
-const uid = () => Math.random().toString(36).slice(2);
-
 const empty = {
   title: "",
   description: "",
@@ -54,6 +46,17 @@ const formatBytes = (bytes) => {
   return `${(kb / 1024).toFixed(1)} MB`;
 };
 
+const getTypeColor = (type) => {
+  switch (type) {
+    case "image":
+      return "#38B2AC";
+    case "video":
+      return "#805AD5";
+    default:
+      return "#4A5568";
+  }
+};
+
 // ─────────────────────────────────────────────────────────────
 // COMPONENT
 // ─────────────────────────────────────────────────────────────
@@ -62,14 +65,10 @@ export default function ElderFiles({ data, setData }) {
   const [editing, setEditing] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState(empty);
-
   const [errors, setErrors] = useState({});
-
   const [deleteTarget, setDeleteTarget] = useState(null);
-
-  const isImage = (item) => item.fileType === "image";
-  const isVideo = (item) => item.fileType === "video";
-  const isPDF = (item) => item.fileUrl?.toLowerCase().includes(".pdf");
+  const [filter, setFilter] = useState("all");
+  const [loadingFiles, setLoadingFiles] = useState(false);
   // ───────────────────────────────────────────────────────────
   // OPEN ADD
   // ───────────────────────────────────────────────────────────
@@ -91,7 +90,7 @@ export default function ElderFiles({ data, setData }) {
   };
 
   // ───────────────────────────────────────────────────────────
-  // FILE UPLOAD
+  // FILE CHANGE
   // ───────────────────────────────────────────────────────────
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -142,7 +141,6 @@ export default function ElderFiles({ data, setData }) {
       setUploading(true);
 
       if (editing) {
-        // 🔥 UPDATE MODE
         const result = await updateElderFile({
           id: editing.id,
           title: form.title,
@@ -170,7 +168,9 @@ export default function ElderFiles({ data, setData }) {
           ),
         );
       } else {
-        // fallback to upload (your existing logic)
+        const uploaded = await handleUpload(form);
+
+        setData((prev) => [uploaded, ...prev]);
       }
 
       setModalOpen(false);
@@ -186,21 +186,32 @@ export default function ElderFiles({ data, setData }) {
   // ───────────────────────────────────────────────────────────
   // REMOVE
   // ───────────────────────────────────────────────────────────
-  const remove = (id) => {
-    setData((d) => d.filter((x) => x.id !== id));
-    setDeleteTarget(null);
+  const remove = async (id) => {
+    try {
+      await deleteElderFile({ id });
+
+      setData((d) => d.filter((x) => x.id !== id));
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Failed to delete file");
+    }
   };
+
   // ───────────────────────────────────────────────────────────
-  // RETRIEVE UPLOADS
+  // LOAD FILES
   // ───────────────────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
       try {
-        const result = await fetchElderFiles();
+        setLoadingFiles(true);
+
+        const mode = filter === "all" ? "all" : "mine";
+
+        const result = await fetchElderFiles(mode);
 
         const formatted = result.map((item) => ({
           ...item,
-
           fileUrl: item.file_url,
           fileName: item.file_name,
 
@@ -211,20 +222,22 @@ export default function ElderFiles({ data, setData }) {
               : "file",
 
           fileSize: formatBytes(item.file_size),
-          date: new Date(item.created_at).toLocaleString(),
 
-          uploadedBy: item.userTB?.name || item.userTB?.email || "Unknown",
+          uploadedBy: item.userTB?.name || item.userTB?.email || "Unknown User",
         }));
 
         setData(formatted);
       } catch (err) {
         console.error(err);
         alert(err.message);
+      } finally {
+        setLoadingFiles(false);
       }
     };
 
     load();
-  }, []);
+  }, [filter]);
+
   return (
     <div>
       {/* HEADER */}
@@ -235,7 +248,39 @@ export default function ElderFiles({ data, setData }) {
         onAdd={openAdd}
         addLabel="Upload File"
       />
+      <div style={{ display: "flex", gap: 10, margin: "12px 0" }}>
+        <button
+          onClick={() => setFilter("all")}
+          disabled={loadingFiles}
+          style={{
+            padding: "8px 14px",
+            borderRadius: 10,
+            background: filter === "all" ? "#093C5D" : "#fff",
+            color: filter === "all" ? "#fff" : "#093C5D",
+            border: "1px solid #ccc",
+            cursor: loadingFiles ? "not-allowed" : "pointer",
+            opacity: loadingFiles ? 0.7 : 1,
+          }}
+        >
+          {loadingFiles && filter === "all" ? "Loading..." : "All"}
+        </button>
 
+        <button
+          onClick={() => setFilter("mine")}
+          disabled={loadingFiles}
+          style={{
+            padding: "8px 14px",
+            borderRadius: 10,
+            background: filter === "mine" ? "#093C5D" : "#fff",
+            color: filter === "mine" ? "#fff" : "#093C5D",
+            border: "1px solid #ccc",
+            cursor: loadingFiles ? "not-allowed" : "pointer",
+            opacity: loadingFiles ? 0.7 : 1,
+          }}
+        >
+          {loadingFiles && filter === "mine" ? "Loading..." : "Mine"}
+        </button>
+      </div>
       {/* EMPTY */}
       {!data.length && (
         <EmptyState
@@ -251,35 +296,41 @@ export default function ElderFiles({ data, setData }) {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-          gap: 16,
+          gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+          gap: 20,
+          alignItems: "start",
         }}
       >
-        {data.map((item, i) => (
-          <>
+        <AnimatePresence>
+          {data.map((item, i) => (
             <motion.div
               key={item.id}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.25, delay: i * 0.04 }}
+              whileHover={{ y: -4 }}
               style={{
-                background: "rgba(255,255,255,0.8)",
-                backdropFilter: "blur(12px)",
-                border: "1px solid rgba(255,255,255,0.8)",
-                borderRadius: 18,
+                background: "rgba(255,255,255,0.88)",
+                backdropFilter: "blur(14px)",
+                borderRadius: 24,
                 overflow: "hidden",
-                boxShadow: "0 6px 20px rgba(9,60,93,0.08)",
+                border: "1px solid rgba(255,255,255,0.7)",
+                boxShadow: "0 10px 35px rgba(9,60,93,0.08)",
+                position: "relative",
               }}
             >
+              {/* PREVIEW */}
               <div
                 style={{
-                  height: 220,
-                  background: "#EDF2F7",
+                  height: 230,
                   position: "relative",
+                  background: "#EDF2F7",
+                  overflow: "hidden",
                 }}
               >
                 {/* IMAGE */}
-                {item.fileType === "image" && item.fileUrl && (
+                {item.fileType === "image" && (
                   <img
                     src={item.fileUrl}
                     alt={item.title}
@@ -292,7 +343,7 @@ export default function ElderFiles({ data, setData }) {
                 )}
 
                 {/* VIDEO */}
-                {item.fileType === "video" && item.fileUrl && (
+                {item.fileType === "video" && (
                   <video
                     src={item.fileUrl}
                     controls
@@ -309,6 +360,7 @@ export default function ElderFiles({ data, setData }) {
                 {item.fileUrl?.toLowerCase().includes(".pdf") && (
                   <iframe
                     src={`${item.fileUrl}#toolbar=0`}
+                    title={item.title}
                     style={{
                       width: "100%",
                       height: "100%",
@@ -317,9 +369,9 @@ export default function ElderFiles({ data, setData }) {
                   />
                 )}
 
-                {/* FALLBACK */}
-                {!item.fileType ||
-                  (item.fileType === "file" && (
+                {/* FILE */}
+                {item.fileType === "file" &&
+                  !item.fileUrl?.toLowerCase().includes(".pdf") && (
                     <div
                       style={{
                         width: "100%",
@@ -328,139 +380,351 @@ export default function ElderFiles({ data, setData }) {
                         flexDirection: "column",
                         alignItems: "center",
                         justifyContent: "center",
-                        gap: 10,
+                        gap: 14,
+                        padding: 20,
+                        textAlign: "center",
                       }}
                     >
-                      <Icon.File />
-                      <span style={{ fontSize: 12 }}>{item.fileName}</span>
+                      <div
+                        style={{
+                          width: 78,
+                          height: 78,
+                          borderRadius: 24,
+                          background: "rgba(9,60,93,0.08)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <Icon.File />
+                      </div>
 
-                      {/* OPEN BUTTON FIX */}
-                      <a href={item.fileUrl} target="_blank" rel="noreferrer">
-                        Open File
-                      </a>
+                      <div>
+                        <p
+                          style={{
+                            fontWeight: 700,
+                            fontSize: 14,
+                            color: "#093C5D",
+                            marginBottom: 6,
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          {item.fileName}
+                        </p>
+
+                        <a
+                          href={item.fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            textDecoration: "none",
+                            color: "#38B2AC",
+                            fontWeight: 600,
+                            fontSize: 13,
+                          }}
+                        >
+                          Open File
+                        </a>
+                      </div>
                     </div>
-                  ))}
-              </div>
-              {/* INFO */}
-              <div style={{ padding: 16 }}>
-                {/* TYPE + SIZE */}
+                  )}
+
+                {/* OVERLAY */}
                 <div
                   style={{
+                    position: "absolute",
+                    inset: 0,
+                    background:
+                      "linear-gradient(to top, rgba(0,0,0,0.45), transparent 55%)",
+                    pointerEvents: "none",
+                  }}
+                />
+
+                {/* TOP ACTIONS */}
+                {/* TOP ACTIONS */}
+                {filter === "mine" && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 14,
+                      right: 14,
+                      display: "flex",
+                      gap: 8,
+                      zIndex: 5,
+                    }}
+                  >
+                    <button
+                      onClick={() => openEdit(item)}
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 12,
+                        border: "none",
+                        background: "rgba(255,255,255,0.9)",
+                        backdropFilter: "blur(8px)",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Icon.Edit />
+                    </button>
+
+                    <button
+                      onClick={() => setDeleteTarget(item)}
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 12,
+                        border: "none",
+                        background: "rgba(255,255,255,0.9)",
+                        backdropFilter: "blur(8px)",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Icon.Trash />
+                    </button>
+                  </div>
+                )}
+
+                {/* FILE TYPE BADGE */}
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 16,
+                    bottom: 16,
+                    background: "rgba(255,255,255,0.9)",
+                    backdropFilter: "blur(10px)",
+                    borderRadius: 999,
+                    padding: "6px 12px",
                     display: "flex",
-                    justifyContent: "space-between",
                     alignItems: "center",
-                    marginBottom: 8,
+                    gap: 8,
+                    zIndex: 5,
                   }}
                 >
+                  <div
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 999,
+                      background: getTypeColor(item.fileType),
+                    }}
+                  />
+
                   <span
                     style={{
                       fontSize: 10,
-                      fontFamily: "DM Mono, monospace",
+                      fontWeight: 700,
                       letterSpacing: "0.12em",
                       textTransform: "uppercase",
-                      color: "#6FD1D7",
+                      color: "#093C5D",
                     }}
                   >
                     {item.fileType}
                   </span>
-
-                  <span
-                    style={{
-                      fontSize: 10,
-                      color: "rgba(9,60,93,0.4)",
-                      fontFamily: "DM Mono, monospace",
-                    }}
-                  >
-                    {item.fileSize}
-                  </span>
                 </div>
+              </div>
 
+              {/* CONTENT */}
+              <div style={{ padding: 20 }}>
                 {/* TITLE */}
-                <p
+                <h3
                   style={{
-                    fontSize: 15,
+                    margin: 0,
+                    fontSize: 17,
                     fontWeight: 700,
                     color: "#093C5D",
-                    marginBottom: 8,
                     lineHeight: 1.4,
+                    marginBottom: 10,
                   }}
                 >
                   {item.title}
-                </p>
+                </h3>
 
                 {/* DESCRIPTION */}
                 {item.description && (
                   <p
                     style={{
-                      fontSize: 12,
-                      color: "rgba(9,60,93,0.6)",
-                      lineHeight: 1.6,
-                      marginBottom: 10,
+                      margin: 0,
+                      fontSize: 13,
+                      lineHeight: 1.7,
+                      color: "rgba(9,60,93,0.68)",
+                      marginBottom: 18,
                     }}
                   >
                     {item.description}
                   </p>
                 )}
 
-                {/* 👤 UPLOADED BY + TIME */}
+                {/* FILE META */}
                 <div
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    marginTop: 10,
-                    flexWrap: "wrap",
-                    gap: 6,
+                    marginBottom: 16,
+                    padding: "12px 14px",
+                    borderRadius: 14,
+                    background: "rgba(9,60,93,0.04)",
                   }}
                 >
-                  <span
-                    style={{
-                      fontSize: 10,
-                      fontFamily: "DM Mono, monospace",
-                      color: "rgba(9,60,93,0.6)",
-                    }}
-                  >
-                    Uploaded by: <b>{item.uploadedBy}</b>
-                  </span>
+                  <div>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 10,
+                        color: "rgba(9,60,93,0.45)",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.08em",
+                        marginBottom: 4,
+                      }}
+                    >
+                      File Size
+                    </p>
 
-                  <span
+                    <span
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "#093C5D",
+                      }}
+                    >
+                      {item.fileSize}
+                    </span>
+                  </div>
+
+                  <div style={{ textAlign: "right" }}>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 10,
+                        color: "rgba(9,60,93,0.45)",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.08em",
+                        marginBottom: 4,
+                      }}
+                    >
+                      Uploaded
+                    </p>
+
+                    <span
+                      style={{
+                        fontSize: 12,
+                        color: "#093C5D",
+                      }}
+                    >
+                      {new Date(item.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+
+                {/* FOOTER */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                  }}
+                >
+                  <div
                     style={{
-                      fontSize: 10,
-                      fontFamily: "DM Mono, monospace",
-                      color: "rgba(9,60,93,0.4)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
                     }}
                   >
-                    {new Date(item.created_at).toLocaleString()}
-                  </span>
+                    <div
+                      style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: "50%",
+                        background: "linear-gradient(135deg,#093C5D,#38B2AC)",
+                        color: "#fff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontWeight: 700,
+                        fontSize: 14,
+                      }}
+                    >
+                      {item.uploadedBy?.charAt(0)?.toUpperCase()}
+                    </div>
+
+                    <div>
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: 11,
+                          color: "rgba(9,60,93,0.45)",
+                          marginBottom: 2,
+                        }}
+                      >
+                        Uploaded by
+                      </p>
+
+                      <span
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: "#093C5D",
+                        }}
+                      >
+                        {item.uploadedBy}
+                      </span>
+                    </div>
+                  </div>
+
+                  <a
+                    href={item.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: 12,
+                      background: "#093C5D",
+                      color: "#fff",
+                      textDecoration: "none",
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Open
+                  </a>
                 </div>
               </div>
             </motion.div>
-          </>
-        ))}
+          ))}
+        </AnimatePresence>
 
         {/* ADD CARD */}
         <motion.button
           whileHover={{ scale: 1.02 }}
           onClick={openAdd}
           style={{
-            minHeight: 320,
-            borderRadius: 18,
-            border: "2px dashed rgba(9,60,93,0.15)",
-            background: "rgba(9,60,93,0.02)",
+            minHeight: 420,
+            borderRadius: 24,
+            border: "2px dashed rgba(9,60,93,0.14)",
+            background: "rgba(9,60,93,0.03)",
             cursor: "pointer",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            gap: 10,
+            gap: 14,
             color: "rgba(9,60,93,0.35)",
           }}
         >
           <div
             style={{
-              width: 54,
-              height: 54,
-              borderRadius: 18,
+              width: 72,
+              height: 72,
+              borderRadius: 24,
               background: "rgba(9,60,93,0.06)",
               display: "flex",
               alignItems: "center",
@@ -470,15 +734,29 @@ export default function ElderFiles({ data, setData }) {
             <Icon.Plus />
           </div>
 
-          <span
-            style={{
-              fontSize: 12,
-              fontFamily: "DM Mono, monospace",
-              letterSpacing: "0.1em",
-            }}
-          >
-            UPLOAD FILE
-          </span>
+          <div style={{ textAlign: "center" }}>
+            <p
+              style={{
+                margin: 0,
+                fontWeight: 700,
+                fontSize: 14,
+                color: "#093C5D",
+                marginBottom: 6,
+              }}
+            >
+              Upload New File
+            </p>
+
+            <span
+              style={{
+                fontSize: 11,
+                letterSpacing: "0.08em",
+                fontFamily: "DM Mono, monospace",
+              }}
+            >
+              IMAGES • VIDEOS • DOCUMENTS
+            </span>
+          </div>
         </motion.button>
       </div>
 
@@ -491,7 +769,6 @@ export default function ElderFiles({ data, setData }) {
         width={560}
       >
         <div style={formGrid(1)}>
-          {/* TITLE */}
           <Field label="Title" required error={errors.title}>
             <Input
               value={form.title}
@@ -505,7 +782,6 @@ export default function ElderFiles({ data, setData }) {
             />
           </Field>
 
-          {/* DESCRIPTION */}
           <Field label="Description">
             <Input
               rows={4}
@@ -520,7 +796,6 @@ export default function ElderFiles({ data, setData }) {
             />
           </Field>
 
-          {/* FILE PICKER */}
           <Field label="Upload File" required error={errors.file}>
             <div
               style={{
@@ -533,7 +808,6 @@ export default function ElderFiles({ data, setData }) {
                 justifyContent: "center",
                 gap: 12,
                 background: "rgba(9,60,93,0.03)",
-                position: "relative",
               }}
             >
               <input
@@ -544,7 +818,6 @@ export default function ElderFiles({ data, setData }) {
                 onChange={handleFileChange}
               />
 
-              {/* IF NO FILE */}
               {!form.fileUrl && (
                 <label
                   htmlFor="fileUpload"
@@ -553,14 +826,14 @@ export default function ElderFiles({ data, setData }) {
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
-                    gap: 10,
+                    gap: 12,
                   }}
                 >
                   <div
                     style={{
-                      width: 60,
-                      height: 60,
-                      borderRadius: 18,
+                      width: 64,
+                      height: 64,
+                      borderRadius: 20,
                       background: "rgba(9,60,93,0.08)",
                       display: "flex",
                       alignItems: "center",
@@ -574,12 +847,12 @@ export default function ElderFiles({ data, setData }) {
                     <p
                       style={{
                         fontSize: 14,
-                        fontWeight: 600,
+                        fontWeight: 700,
                         color: "#093C5D",
                         marginBottom: 4,
                       }}
                     >
-                      Click to upload file
+                      Click to upload
                     </p>
 
                     <span
@@ -588,57 +861,19 @@ export default function ElderFiles({ data, setData }) {
                         color: "rgba(9,60,93,0.5)",
                       }}
                     >
-                      Images, videos, PDF, DOCX, XLSX, PPT, TXT
+                      Images, videos, PDF, DOCX, XLSX, PPT
                     </span>
                   </div>
                 </label>
               )}
 
-              {/* IF FILE EXISTS */}
               {form.fileUrl && (
-                <div
-                  style={{
-                    width: "100%",
-                    textAlign: "center",
-                    position: "relative",
-                  }}
-                >
-                  {/* REMOVE BUTTON */}
-                  <button
-                    onClick={() => {
-                      setForm({
-                        ...form,
-                        file: null,
-                        fileUrl: "",
-                        fileName: "",
-                        fileType: "",
-                        fileSize: "",
-                      });
-                    }}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      right: 0,
-                      border: "none",
-                      background: "rgba(229,62,62,0.1)",
-                      color: "#E53E3E",
-                      padding: "4px 8px",
-                      borderRadius: 10,
-                      fontSize: 11,
-                      cursor: "pointer",
-                      fontWeight: 600,
-                    }}
-                  >
-                    Remove
-                  </button>
-
+                <div style={{ textAlign: "center" }}>
                   <p
                     style={{
-                      fontSize: 13,
-                      fontWeight: 600,
+                      fontWeight: 700,
                       color: "#093C5D",
-                      marginBottom: 4,
-                      wordBreak: "break-word",
+                      marginBottom: 6,
                     }}
                   >
                     {form.fileName}
@@ -646,7 +881,7 @@ export default function ElderFiles({ data, setData }) {
 
                   <span
                     style={{
-                      fontSize: 11,
+                      fontSize: 12,
                       color: "rgba(9,60,93,0.5)",
                     }}
                   >
@@ -656,88 +891,6 @@ export default function ElderFiles({ data, setData }) {
               )}
             </div>
           </Field>
-
-          {/* PREVIEW */}
-          {form.fileUrl && (
-            <div
-              style={{
-                borderRadius: 18,
-                overflow: "hidden",
-                border: "1px solid rgba(9,60,93,0.08)",
-              }}
-            >
-              {form.fileType === "image" && (
-                <img
-                  src={form.fileUrl}
-                  alt="preview"
-                  style={{
-                    width: "100%",
-                    maxHeight: 280,
-                    objectFit: "cover",
-                  }}
-                />
-              )}
-
-              {form.fileType === "video" && (
-                <video
-                  src={form.fileUrl}
-                  controls
-                  style={{
-                    width: "100%",
-                    maxHeight: 280,
-                    background: "#000",
-                  }}
-                />
-              )}
-
-              {form.fileType === "file" && (
-                <div
-                  style={{
-                    padding: 24,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 14,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 56,
-                      height: 56,
-                      borderRadius: 16,
-                      background: "rgba(9,60,93,0.08)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Icon.File />
-                  </div>
-
-                  <div>
-                    <p
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: "#093C5D",
-                        marginBottom: 4,
-                      }}
-                    >
-                      {form.fileName}
-                    </p>
-
-                    <span
-                      style={{
-                        fontSize: 11,
-                        color: "rgba(9,60,93,0.5)",
-                      }}
-                    >
-                      {form.fileSize}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         <div
@@ -745,51 +898,37 @@ export default function ElderFiles({ data, setData }) {
             display: "flex",
             justifyContent: "flex-end",
             gap: 10,
-            marginTop: 20,
+            marginTop: 24,
           }}
         >
-          {/* CANCEL */}
           <button
             onClick={() => setModalOpen(false)}
-            disabled={uploading}
             style={{
               padding: "10px 16px",
-              borderRadius: 10,
-              border: "1px solid #ccc",
+              borderRadius: 12,
+              border: "1px solid #D1D5DB",
               background: "#fff",
-              cursor: uploading ? "not-allowed" : "pointer",
-              opacity: uploading ? 0.6 : 1,
+              cursor: "pointer",
             }}
           >
             Cancel
           </button>
 
-          {/* UPLOAD */}
           <button
             onClick={save}
             disabled={uploading}
             style={{
-              padding: "10px 16px",
-              borderRadius: 10,
+              padding: "10px 18px",
+              borderRadius: 12,
               border: "none",
-              background: uploading ? "#6b7280" : "#093C5D",
+              background: "#093C5D",
               color: "#fff",
-              cursor: uploading ? "not-allowed" : "pointer",
+              cursor: "pointer",
               minWidth: 150,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
+              fontWeight: 600,
             }}
           >
-            {uploading ? (
-              <>
-                <span className="animate-spin-smooth w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                Uploading...
-              </>
-            ) : (
-              "Upload File"
-            )}
+            {uploading ? "Uploading..." : "Save File"}
           </button>
         </div>
       </Modal>

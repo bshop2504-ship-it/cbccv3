@@ -440,7 +440,11 @@ export default function CBCCAdminPanel() {
                 transition={{ duration: 0.25 }}
               >
                 {activePanel === "elderfiles" && (
-                  <ElderFiles data={elderfile} setData={setElderfile} />
+                  <ElderFiles
+                    data={elderfile}
+                    setData={setElderfile}
+                    currentUser={currentUser}
+                  />
                 )}
               </motion.div>
             </AnimatePresence>

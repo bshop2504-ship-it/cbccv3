@@ -18,6 +18,6 @@ export const fetchCurrentUser = async () => {
   });
 
   const data = await res.json();
-
+  console.log(data.user);
   return data.user;
 };

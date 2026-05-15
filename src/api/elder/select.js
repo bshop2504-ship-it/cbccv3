@@ -1,6 +1,6 @@
 import { supabase } from "../../lib/supabaseClient";
 
-export const fetchElderFiles = async () => {
+export const fetchElderFiles = async (mode = "mine") => {
   const { data: sessionData } = await supabase.auth.getSession();
 
   const token = sessionData?.session?.access_token;
@@ -9,7 +9,7 @@ export const fetchElderFiles = async () => {
     throw new Error("No session found");
   }
 
-  const res = await fetch("/api/elder/elder-select", {
+  const res = await fetch(`/api/elder/elder-select?mode=${mode}`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`,
