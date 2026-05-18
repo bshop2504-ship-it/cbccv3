@@ -11,6 +11,7 @@ import {
 } from "../assets/svg/Icons.jsx";
 import { fetchCurrentUser } from "../api/currentUser.js";
 import { loginAccount } from "../api/auth.js";
+import { forgotPassword } from "../api/auth.js";
 import { supabase } from "../lib/supabaseClient";
 export default function LoginModal({ onClose, onLogin }) {
   const navigate = useNavigate();
@@ -68,7 +69,19 @@ export default function LoginModal({ onClose, onLogin }) {
       setLoading(false);
     }
   };
-
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    if (!email) {
+      setError("Please enter your email first");
+      return;
+    }
+    try {
+      const result = await forgotPassword(email);
+      setError(result.message || "Password reset email sent");
+    } catch (err) {
+      setError(err.message || "Failed to send reset email");
+    }
+  };
   return (
     <AnimatePresence>
       <motion.div
@@ -166,6 +179,12 @@ export default function LoginModal({ onClose, onLogin }) {
                     )}
                   </button>
                 </div>
+                <label
+                  className="block text-xs text-end font-semibold text-navy/60 underline cursor-pointer hover:text-navy"
+                  onClick={handleForgotPassword}
+                >
+                  Forgot Password?
+                </label>
               </div>
 
               {/* Error */}

@@ -60,7 +60,7 @@ export function SectionHeader({ icon, label, count, onAdd, addLabel }) {
   );
 }
 
-export function ModalFooter({ onClose, onSave, saveLabel = "Save Changes" }) {
+export function ModalFooter({ onClose, onSave, saveLabel = "Save" }) {
   return (
     <div
       style={{

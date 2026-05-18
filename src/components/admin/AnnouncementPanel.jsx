@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Icon } from "../../assets/svg/Icon";
+import { motion } from "framer-motion";
 import {
   Field,
   Input,
@@ -17,13 +18,17 @@ import {
   tableStyles,
   formGrid,
 } from "../AdminSharedSubComponents";
-// ─── PANEL: Announcements ─────────────────────────────────────────
-export default function AnnouncementPanel({ data, setData }) {
+import { createAnnouncement } from "../../api/announce/create";
+import { fetchAnnouncements } from "../../api/announce/read";
+import { updateAnnouncement } from "../../api/announce/update";
+import { deleteAnnouncement } from "../../api/announce/delete";
+export default function AnnouncementPanel() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ description: "", title: "" });
   const [errors, setErrors] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [data, setData] = useState([]);
 
   const openAdd = () => {
     setEditing(null);
@@ -37,6 +42,7 @@ export default function AnnouncementPanel({ data, setData }) {
       description: item.description,
       title: item.title,
     });
+
     setErrors({});
     setModalOpen(true);
   };
@@ -49,26 +55,66 @@ export default function AnnouncementPanel({ data, setData }) {
     if (!form.title.trim()) e.title = "Bible title is required";
     return e;
   };
-
-  const save = () => {
+  const loadAnnouncements = async () => {
+    try {
+      const result = await fetchAnnouncements();
+      setData(result || []);
+    } catch (err) {
+      console.error("Failed to load announcements:", err);
+      setData([]);
+    }
+  };
+  const save = async () => {
     const e = validate();
+
     if (Object.keys(e).length) {
       setErrors(e);
       return;
     }
-    if (editing) {
-      setData((d) =>
-        d.map((x) => (x.id === editing.id ? { ...x, ...form } : x)),
-      );
-    } else {
-      setData((d) => [...d, { id: uid(), ...form }]);
+
+    try {
+      if (editing) {
+        await updateAnnouncement({
+          id: editing.id,
+          title: form.title,
+          description: form.description,
+        });
+        console.log("EDITING ID:", editing.id);
+        console.log("TYPE:", typeof editing.id);
+      } else {
+        await createAnnouncement({
+          title: form.title,
+          description: form.description,
+        });
+      }
+
+      await loadAnnouncements();
+
+      setModalOpen(false);
+      setForm({ title: "", description: "" });
+      setErrors({});
+      setEditing(null);
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Failed to save announcement");
     }
-    setModalOpen(false);
   };
 
-  const remove = (id) => {
-    setData((d) => d.filter((x) => x.id !== id));
-    setDeleteTarget(null);
+  useEffect(() => {
+    loadAnnouncements();
+  }, []);
+
+  const remove = async (id) => {
+    try {
+      await deleteAnnouncement(id);
+
+      await loadAnnouncements();
+
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Failed to delete announcement");
+    }
   };
 
   return (
@@ -92,66 +138,71 @@ export default function AnnouncementPanel({ data, setData }) {
             </tr>
           </thead>
           <tbody>
-            {data.map((item, i) => (
-              <motion.tr
-                key={item.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                style={tableStyles.tr}
-              >
-                <td style={tableStyles.td}>
-                  <span
-                    style={{
-                      fontFamily: "DM Mono, monospace",
-                      fontSize: 12,
-                      color: "#3B7597",
-                    }}
-                  >
-                    {item.title}
-                  </span>
-                </td>
-                <td style={{ ...tableStyles.td, maxWidth: 260 }}>
-                  <span
-                    style={{
-                      fontSize: 13,
-                      color: "rgba(9,60,93,0.6)",
-                      fontStyle: "italic",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                    }}
-                  >
-                    "{item.description}"
-                  </span>
-                </td>
-                <td style={{ ...tableStyles.td, textAlign: "right" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 6,
-                      justifyContent: "flex-end",
-                    }}
-                  >
-                    <button
-                      style={btnStyles.iconBtn}
-                      onClick={() => openEdit(item)}
-                      title="Edit"
+            {data.map((item, i) => {
+              if (!item || !item.id) return null;
+
+              return (
+                <motion.tr
+                  key={item.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  style={tableStyles.tr}
+                >
+                  <td style={tableStyles.td}>
+                    <span
+                      style={{
+                        fontFamily: "DM Mono, monospace",
+                        fontSize: 12,
+                        color: "#3B7597",
+                      }}
                     >
-                      <Icon.Edit />
-                    </button>
-                    <button
-                      style={btnStyles.danger}
-                      onClick={() => setDeleteTarget(item)}
-                      title="Delete"
+                      {item.title || "-"}
+                    </span>
+                  </td>
+
+                  <td style={{ ...tableStyles.td, maxWidth: 260 }}>
+                    <span
+                      style={{
+                        fontSize: 13,
+                        color: "rgba(9,60,93,0.6)",
+                        fontStyle: "italic",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
                     >
-                      <Icon.Trash />
-                    </button>
-                  </div>
-                </td>
-              </motion.tr>
-            ))}
+                      "{item.description || ""}"
+                    </span>
+                  </td>
+
+                  <td style={{ ...tableStyles.td, textAlign: "right" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 6,
+                        justifyContent: "flex-end",
+                      }}
+                    >
+                      <button
+                        style={btnStyles.iconBtn}
+                        onClick={() => openEdit(item)}
+                      >
+                        <Icon.Edit />
+                      </button>
+
+                      <button
+                        style={btnStyles.danger}
+                        onClick={() => setDeleteTarget(item)}
+                      >
+                        <Icon.Trash />
+                      </button>
+                    </div>
+                  </td>
+                </motion.tr>
+              );
+            })}
           </tbody>
         </table>
         {data.length === 0 && <EmptyState label="No announcement yet" />}
