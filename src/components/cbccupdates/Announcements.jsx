@@ -22,7 +22,13 @@ export default function Announcements() {
         title: item.title,
         message: item.description,
         date: item.created_at
-          ? new Date(item.created_at).toLocaleDateString()
+          ? new Date(item.created_at).toLocaleString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
           : "No date",
         category: item.category || "Announcement",
       }));
