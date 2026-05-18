@@ -6,48 +6,71 @@ import {
   ChevronRight,
   SignalIcon,
 } from "../../assets/svg/Icons";
-
-const announcements = [
-  {
-    title: "Sunday Worship Service",
-    message:
-      "Join us this Sunday at 9:00 AM for worship and fellowship together.",
-    date: "May 11, 2026",
-    category: "Service",
-  },
-  {
-    title: "Youth Fellowship",
-    message:
-      "Youth fellowship will be held this Friday at 6:30 PM in the main hall.",
-    date: "May 9, 2026",
-    category: "Youth",
-  },
-  {
-    title: "Prayer Meeting",
-    message: "Midweek prayer meeting starts every Wednesday at 7:00 PM.",
-    date: "Every Wednesday",
-    category: "Prayer",
-  },
-  {
-    title: "Community Outreach",
-    message: "Volunteers are welcome for our outreach program this weekend.",
-    date: "May 17, 2026",
-    category: "Outreach",
-  },
-];
+import { supabase } from "../../lib/supabaseClient";
+import { publicFetchAnnouncements } from "../../api/announce/read-public";
 
 export default function Announcements() {
   const [index, setIndex] = useState(0);
+  const [announcements, setAnnouncements] = useState([]);
+
+  const loadAnnouncements = async () => {
+    try {
+      const result = await publicFetchAnnouncements();
+
+      const formatted = (result || []).map((item) => ({
+        id: item.id,
+        title: item.title,
+        message: item.description,
+        date: item.created_at
+          ? new Date(item.created_at).toLocaleDateString()
+          : "No date",
+        category: item.category || "Announcement",
+      }));
+
+      setAnnouncements(formatted);
+    } catch (err) {
+      console.error("PUBLIC FETCH ERROR:", err);
+      setAnnouncements([]);
+    }
+  };
 
   useEffect(() => {
+    loadAnnouncements();
+
+    const channel = supabase
+      .channel("announce-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "announce_tb",
+        },
+        (payload) => {
+          console.log("REALTIME EVENT:", payload);
+
+          // reload data when something changes
+          loadAnnouncements();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (announcements.length === 0) return;
+
     const interval = setInterval(() => {
       setIndex((prev) => (prev + 1) % announcements.length);
     }, 6000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [announcements]);
 
-  const current = announcements[index];
+  const current = announcements[index] || {};
 
   const next = () => {
     setIndex((prev) => (prev + 1) % announcements.length);
@@ -85,7 +108,7 @@ export default function Announcements() {
 
         <AnimatePresence mode="wait">
           <motion.div
-            key={index}
+            key={current.id || index}
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -14 }}
@@ -94,10 +117,6 @@ export default function Announcements() {
           >
             {/* Top */}
             <div className="flex items-center justify-between gap-4 flex-wrap mb-8">
-              <span className="px-4 py-1.5 rounded-full border border-cyan-200 bg-cyan-50 text-cyan-700 text-[10px] uppercase tracking-[0.18em] font-medium font-['DM_Mono']">
-                {current.category}
-              </span>
-
               <div className="flex items-center gap-2 text-slate-400 text-xs uppercase tracking-[0.12em] font-['DM_Mono']">
                 <CalendarIcon />
                 <span>{current.date}</span>
