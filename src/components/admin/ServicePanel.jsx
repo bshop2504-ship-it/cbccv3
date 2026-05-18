@@ -18,6 +18,10 @@ import {
   tableStyles,
   formGrid,
 } from "../AdminSharedSubComponents";
+import { createWeekService } from "../../api/weeklyservice/create";
+import { fetchWeekServices } from "../../api/weeklyservice/read";
+import { updateWeekService } from "../../api/weeklyservice/update";
+import { deleteWeekService } from "../../api/weeklyservice/delete";
 const CATEGORIES = [
   "Worship",
   "Youth",
@@ -41,7 +45,6 @@ export default function ServicePanel({ data, setData }) {
     pastor: "",
     description: "",
     category: "",
-    img: "",
   };
   const [form, setForm] = useState(empty);
   const [errors, setErrors] = useState({});
@@ -71,31 +74,82 @@ export default function ServicePanel({ data, setData }) {
     return e;
   };
 
-  const save = () => {
+  const save = async () => {
     const e = validate();
     if (Object.keys(e).length) {
       setErrors(e);
       return;
     }
-    if (editing) {
-      setData((d) =>
-        d.map((x) => (x.id === editing.id ? { ...x, ...form } : x)),
-      );
-    } else {
-      setData((d) => [
-        ...d,
-        {
-          id: Date.now(), // or crypto.randomUUID()
-          ...form,
-        },
-      ]);
-    }
-    setModalOpen(false);
-  };
 
-  const remove = (id) => {
-    setData((d) => d.filter((x) => x.id !== id));
-    setDeleteTarget(null);
+    try {
+      if (editing) {
+        const result = await updateWeekService(editing.id, form);
+
+        if (!result.success) {
+          console.error("Update failed:", result.error);
+          return;
+        }
+
+        // update UI with DB response
+        setData((d) =>
+          d.map((x) => (x.id === editing.id ? result.data[0] : x)),
+        );
+      } else {
+        const result = await createWeekService(form);
+
+        if (!result.success) {
+          console.error("Insert failed:", result.error);
+          return;
+        }
+
+        setData((d) => [...d, result.data[0]]);
+      }
+
+      setModalOpen(false);
+      setEditing(null);
+
+      setForm({
+        month: "",
+        day: "",
+        title: "",
+        time: "",
+        pastor: "",
+        description: "",
+        category: "",
+      });
+    } catch (err) {
+      console.error("SAVE ERROR:", err);
+    }
+  };
+  useEffect(() => {
+    const loadServices = async () => {
+      const result = await fetchWeekServices();
+
+      if (result.success) {
+        setData(result.data);
+      } else {
+        console.error(result.error);
+      }
+    };
+
+    loadServices();
+  }, []);
+  const remove = async (id) => {
+    try {
+      const result = await deleteWeekService(id);
+
+      if (!result.success) {
+        console.error("Delete failed:", result.error);
+        return;
+      }
+
+      // update UI after DB delete
+      setData((d) => d.filter((x) => x.id !== id));
+
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error("DELETE ERROR:", err);
+    }
   };
 
   const catColors = {
@@ -114,19 +168,17 @@ export default function ServicePanel({ data, setData }) {
         label="Weekly Services"
         count={data.length}
         onAdd={openAdd}
-        addLabel="Add Service"
+        addLabel="Add Weekly Service"
       />
       <div style={tableStyles.wrapper}>
         <table style={tableStyles.table}>
           <thead>
             <tr>
-              {["", "Date", "Title", "Time", "Pastor", "Category", ""].map(
-                (h) => (
-                  <th key={h} style={tableStyles.th}>
-                    {h}
-                  </th>
-                ),
-              )}
+              {["Date", "Title", "Time", "Pastor", "Category", ""].map((h) => (
+                <th key={h} style={tableStyles.th}>
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -138,32 +190,6 @@ export default function ServicePanel({ data, setData }) {
                 transition={{ delay: i * 0.05 }}
                 style={tableStyles.tr}
               >
-                <td style={tableStyles.td}>
-                  <div
-                    style={{
-                      width: 52,
-                      height: 38,
-                      borderRadius: 8,
-                      overflow: "hidden",
-                      flexShrink: 0,
-                      background: item.img
-                        ? `url(${item.img}) center/cover`
-                        : "linear-gradient(135deg,#093C5D,#3B7597)",
-                      border: "1px solid rgba(9,60,93,0.1)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {!item.img && (
-                      <span
-                        style={{ color: "rgba(255,255,255,0.4)", fontSize: 16 }}
-                      >
-                        🖼
-                      </span>
-                    )}
-                  </div>
-                </td>
                 <td style={tableStyles.td}>
                   <div
                     style={{ fontFamily: "DM Mono, monospace", fontSize: 12 }}
@@ -248,7 +274,7 @@ export default function ServicePanel({ data, setData }) {
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editing ? "Edit Service" : "Add Service"}
+        title={editing ? "Edit Weekly Service" : "Add Weekly Service"}
         icon={<Icon.Calendar />}
         width={600}
       >
@@ -298,9 +324,9 @@ export default function ServicePanel({ data, setData }) {
         <div style={{ ...formGrid(2), marginTop: 14 }}>
           <Field label="Time" required error={errors.time}>
             <Input
+              type="time"
               value={form.time}
               onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))}
-              placeholder="e.g. 9:00 AM"
             />
           </Field>
           <Field label="Category" required error={errors.category}>
@@ -334,12 +360,6 @@ export default function ServicePanel({ data, setData }) {
               rows={3}
             />
           </Field>
-          <ImagePicker
-            label="Service Image"
-            value={form.img}
-            onChange={(val) => setForm((f) => ({ ...f, img: val }))}
-            height={150}
-          />
         </div>
         <ModalFooter onClose={() => setModalOpen(false)} onSave={save} />
       </Modal>

@@ -12,64 +12,42 @@ import {
   PlayIcon,
   SignalIcon,
 } from "../../assets/svg/Icons";
-
-// ─── Weekly Services Data ──────────────────────────────────────────
-const services = [
-  {
-    id: 1,
-    title: "Sunday Worship Celebration",
-    date: "May 4, 2025",
-    time: "9:00 AM & 11:00 AM",
-    speaker: "Ptr. Ramon Santos",
-    series: "Walking in the Spirit",
-    description:
-      "Join us for a powerful worship celebration as we dive into our series on Spirit-filled living. Expect anointed music, prayer, and a Word that transforms.",
-    tag: "Worship",
-    color: "#6FD1D7",
-  },
-  {
-    id: 2,
-    title: "Wednesday Prayer Night",
-    date: "May 7, 2025",
-    time: "7:00 PM",
-    speaker: "Ptr. Grace Lim",
-    series: "Encountering God",
-    description:
-      "A mid-week gathering dedicated to corporate prayer and intercession. Come with an open heart as we seek God's face together and pray for our community.",
-    tag: "Prayer",
-    color: "#3B7597",
-  },
-  {
-    id: 3,
-    title: "Friday Youth Service",
-    date: "May 9, 2025",
-    time: "6:30 PM",
-    speaker: "Ptr. Carlos Vega",
-    series: "Generation Rising",
-    description:
-      "An electrifying gathering for the next generation! Through worship, the Word, and community, we're raising up disciples who will impact their schools, homes, and cities.",
-    tag: "Youth",
-    color: "#093C5D",
-  },
-  {
-    id: 4,
-    title: "Saturday Men's Breakfast",
-    date: "May 10, 2025",
-    time: "7:00 AM",
-    speaker: "Ptr. David Torres",
-    series: "Iron Sharpens Iron",
-    description:
-      "Men gathering over breakfast for fellowship, accountability, and the Word. We're building men of God — in character, family, and community leadership.",
-    tag: "Men",
-    color: "#093C5D",
-  },
-];
+import { fetchWeekServices } from "../../api/weeklyservice/read";
 
 // ─── Weekly Service Section ─────────────────────────────────────────
 export default function WeeklyService() {
+  const [services, setServices] = useState([]);
   const [active, setActive] = useState(0);
   const [direction, setDirection] = useState(1);
   const intervalRef = useRef(null);
+
+  // fetch from Supabase
+  useEffect(() => {
+    const loadServices = async () => {
+      const result = await fetchWeekServices();
+
+      if (result.success) {
+        // map DB fields → UI expected fields (NO UI change)
+        const formatted = result.data.map((item) => ({
+          id: item.id,
+          title: item.title,
+          time: item.time,
+          speaker: item.pastor,
+          description: item.description,
+          tag: item.category,
+
+          // keep UI structure working (your UI expects these)
+          date: `${item.month} ${item.day}`,
+          color: "#3B7597", // fallback color (since DB has no color)
+          series: item.category,
+        }));
+
+        setServices(formatted);
+      }
+    };
+
+    loadServices();
+  }, []);
 
   const startInterval = () => {
     clearInterval(intervalRef.current);
@@ -80,25 +58,43 @@ export default function WeeklyService() {
   };
 
   useEffect(() => {
-    startInterval();
+    if (services.length > 0) {
+      startInterval();
+    }
     return () => clearInterval(intervalRef.current);
-  }, []);
+  }, [services]);
 
   const goTo = (idx) => {
     setDirection(idx > active ? 1 : -1);
     setActive(idx);
     startInterval();
   };
+
   const prev = () => goTo((active - 1 + services.length) % services.length);
   const next = () => goTo((active + 1) % services.length);
 
-  const current = services[active];
+  const current = services[active] || {};
 
   const slideVariants = {
     enter: (d) => ({ x: d > 0 ? "100%" : "-100%", opacity: 0 }),
     center: { x: 0, opacity: 1 },
     exit: (d) => ({ x: d > 0 ? "-100%" : "100%", opacity: 0 }),
   };
+
+  if (services.length === 0) {
+    return (
+      <section className="cbcc-section service-section">
+        <div className="section-eyebrow">
+          <span className="eyebrow-icon">
+            <CalendarIcon />
+          </span>
+          <span>Weekly Services</span>
+        </div>
+
+        <p style={{ textAlign: "center", padding: 40 }}>Loading services...</p>
+      </section>
+    );
+  }
 
   return (
     <section className="cbcc-section service-section">
@@ -140,6 +136,7 @@ export default function WeeklyService() {
                 >
                   {current.tag}
                 </span>
+
                 <div className="service-date-badge">
                   <span className="service-month">
                     {current.date.split(" ")[0]}
@@ -148,6 +145,7 @@ export default function WeeklyService() {
                     {current.date.split(" ")[1].replace(",", "")}
                   </span>
                 </div>
+
                 <div className="service-art-cross">
                   <CrossIcon />
                 </div>
@@ -158,6 +156,7 @@ export default function WeeklyService() {
             {/* Right: Info Panel */}
             <div className="service-info-panel">
               <h3 className="service-title">{current.title}</h3>
+
               <div className="service-meta">
                 <span className="meta-chip">
                   <ClockIcon /> {current.time}
@@ -166,15 +165,18 @@ export default function WeeklyService() {
                   <UserIcon /> {current.speaker}
                 </span>
               </div>
+
               <p className="service-series">
                 Series: <em>{current.series}</em>
               </p>
+
               <p className="service-desc">{current.description}</p>
+
               <button
                 className="service-cta"
                 style={{ "--accent": current.color }}
               >
-                Learn More
+                Join Us
               </button>
             </div>
           </motion.div>
@@ -214,6 +216,7 @@ export default function WeeklyService() {
               }}
             />
             <span className="thumb-label">{s.tag}</span>
+
             {i === active && (
               <motion.div
                 className="thumb-underline"
