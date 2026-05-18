@@ -12,6 +12,7 @@ import {
   PlayIcon,
   SignalIcon,
 } from "../../assets/svg/Icons";
+import { supabase } from "../../lib/supabaseClient";
 import { fetchWeekServices } from "../../api/weeklyservice/read";
 
 // ─── Weekly Service Section ─────────────────────────────────────────
@@ -21,13 +22,11 @@ export default function WeeklyService() {
   const [direction, setDirection] = useState(1);
   const intervalRef = useRef(null);
 
-  // fetch from Supabase
   useEffect(() => {
     const loadServices = async () => {
       const result = await fetchWeekServices();
 
       if (result.success) {
-        // map DB fields → UI expected fields (NO UI change)
         const formatted = result.data.map((item) => ({
           id: item.id,
           title: item.title,
@@ -35,10 +34,8 @@ export default function WeeklyService() {
           speaker: item.pastor,
           description: item.description,
           tag: item.category,
-
-          // keep UI structure working (your UI expects these)
           date: `${item.month} ${item.day}`,
-          color: "#3B7597", // fallback color (since DB has no color)
+          color: "#3B7597",
           series: item.category,
         }));
 
@@ -47,6 +44,25 @@ export default function WeeklyService() {
     };
 
     loadServices();
+
+    const channel = supabase
+      .channel("weekservice_realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "weekservice_tb",
+        },
+        async () => {
+          await loadServices();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const startInterval = () => {

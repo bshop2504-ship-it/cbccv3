@@ -1,120 +1,137 @@
-// ─── ESV Verses Pool ───────────────────────────────────────────────
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BookOpenIcon,
-  CalendarIcon,
-  RadioIcon,
   CrossIcon,
   ChevronLeft,
   ChevronRight,
-  ClockIcon,
-  UserIcon,
-  PlayIcon,
-  SignalIcon,
 } from "../../assets/svg/Icons";
 
-const verses = [
-  {
-    text: "For God so loved the world, that he gave his only Son, that whoever believes in him should not perish but have eternal life.",
-    ref: "John 3:16",
-    theme: "Love",
-  },
-  {
-    text: "I can do all things through him who strengthens me.",
-    ref: "Philippians 4:13",
-    theme: "Strength",
-  },
-  {
-    text: "Trust in the LORD with all your heart, and do not lean on your own understanding.",
-    ref: "Proverbs 3:5",
-    theme: "Trust",
-  },
-  {
-    text: "The LORD is my shepherd; I shall not want.",
-    ref: "Psalm 23:1",
-    theme: "Provision",
-  },
-  {
-    text: "But seek first the kingdom of God and his righteousness, and all these things will be added to you.",
-    ref: "Matthew 6:33",
-    theme: "Purpose",
-  },
-  {
-    text: "Be strong and courageous. Do not be frightened, and do not be dismayed, for the LORD your God is with you wherever you go.",
-    ref: "Joshua 1:9",
-    theme: "Courage",
-  },
-  {
-    text: "And we know that for those who love God all things work together for good.",
-    ref: "Romans 8:28",
-    theme: "Hope",
-  },
-];
+import { supabase } from "../../lib/supabaseClient";
+import { fetchVerses } from "../../api/dailydevotion/read";
 
-function getTodayVerseIndex() {
-  const d = new Date();
-  return (
-    (d.getFullYear() * 366 + d.getMonth() * 31 + d.getDate()) % verses.length
-  );
-}
-
+// ─── DAILY DEVOTION ───────────────────────────────────────────────
 export default function DailyDevotion() {
-  const [verseIndex, setVerseIndex] = useState(getTodayVerseIndex());
+  const [verses, setVerses] = useState([]);
+
+  const [verseIndex, setVerseIndex] = useState(0);
   const [displayed, setDisplayed] = useState("");
   const [charIndex, setCharIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(true);
   const [progress, setProgress] = useState(0);
+
   const timerRef = useRef(null);
   const progressRef = useRef(null);
-  const DISPLAY_DURATION = 7000;
-  const verse = verses[verseIndex];
 
-  // Typewriter effect
+  const DISPLAY_DURATION = 7000;
+
+  const verse =
+    verses.length > 0
+      ? verses[verseIndex]
+      : {
+          word: "",
+          verse: "",
+          reference: "",
+        };
+
+  // ─── FETCH VERSES ───────────────────────────────────────────────
   useEffect(() => {
+    loadVerses();
+
+    // REALTIME SUBSCRIPTION
+    const channel = supabase
+      .channel("daily-devotion-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "bible_verses",
+        },
+        async () => {
+          await loadVerses();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const loadVerses = async () => {
+    const result = await fetchVerses();
+
+    if (result.success) {
+      setVerses(result.data || []);
+    } else {
+      console.error(result.error);
+    }
+  };
+
+  // ─── RESET TYPEWRITER ───────────────────────────────────────────
+  useEffect(() => {
+    if (!verse?.verse) return;
+
     setDisplayed("");
     setCharIndex(0);
     setIsTyping(true);
     setProgress(0);
-  }, [verseIndex]);
+  }, [verseIndex, verses]);
 
+  // ─── TYPEWRITER EFFECT ──────────────────────────────────────────
   useEffect(() => {
-    if (charIndex < verse.text.length) {
+    if (!verse?.verse) return;
+
+    if (charIndex < verse.verse.length) {
       const speed = 28;
+
       const t = setTimeout(() => {
-        setDisplayed(verse.text.slice(0, charIndex + 1));
+        setDisplayed(verse.verse.slice(0, charIndex + 1));
         setCharIndex((c) => c + 1);
       }, speed);
+
       return () => clearTimeout(t);
     } else {
       setIsTyping(false);
     }
-  }, [charIndex, verse.text]);
+  }, [charIndex, verse]);
 
-  // Auto-advance every 7s after typing finishes
+  // ─── AUTO NEXT ──────────────────────────────────────────────────
   useEffect(() => {
-    if (isTyping) return;
+    if (isTyping || verses.length === 0) return;
+
     timerRef.current = setTimeout(() => {
       setVerseIndex((i) => (i + 1) % verses.length);
     }, DISPLAY_DURATION);
-    return () => clearTimeout(timerRef.current);
-  }, [isTyping, verseIndex]);
 
-  // Progress bar
+    return () => clearTimeout(timerRef.current);
+  }, [isTyping, verseIndex, verses]);
+
+  // ─── PROGRESS BAR ───────────────────────────────────────────────
   useEffect(() => {
-    if (isTyping) return;
+    if (isTyping || verses.length === 0) return;
+
     setProgress(0);
+
     const start = Date.now();
+
     progressRef.current = setInterval(() => {
       const elapsed = Date.now() - start;
+
       setProgress(Math.min(elapsed / DISPLAY_DURATION, 1));
     }, 50);
-    return () => clearInterval(progressRef.current);
-  }, [isTyping, verseIndex]);
 
+    return () => clearInterval(progressRef.current);
+  }, [isTyping, verseIndex, verses]);
+
+  // ─── NAVIGATION ─────────────────────────────────────────────────
   const goTo = (dir) => {
+    if (verses.length === 0) return;
+
     clearTimeout(timerRef.current);
     clearInterval(progressRef.current);
+
     setVerseIndex((i) => (i + dir + verses.length) % verses.length);
   };
 
@@ -124,8 +141,11 @@ export default function DailyDevotion() {
         <span className="eyebrow-icon">
           <BookOpenIcon />
         </span>
+
         <span>Daily Devotion</span>
+
         <span className="eyebrow-dot" />
+
         <span className="eyebrow-sub">
           ESV Translation · Auto-advances every 7s
         </span>
@@ -147,13 +167,14 @@ export default function DailyDevotion() {
             transition={{ duration: 0.4 }}
             className="theme-badge"
           >
-            {verse.theme}
+            {verse.word}
           </motion.div>
         </AnimatePresence>
 
-        {/* Verse text with typewriter */}
+        {/* Verse text */}
         <div className="verse-text-wrap">
           <span className="quote-mark open">"</span>
+
           <AnimatePresence mode="wait">
             <motion.p
               key={verseIndex + "-text"}
@@ -162,9 +183,11 @@ export default function DailyDevotion() {
               className="verse-text"
             >
               {displayed}
+
               {isTyping && <span className="cursor-blink">|</span>}
             </motion.p>
           </AnimatePresence>
+
           <span className="quote-mark close">"</span>
         </div>
 
@@ -179,12 +202,12 @@ export default function DailyDevotion() {
               transition={{ delay: 0.3 }}
               className="verse-ref"
             >
-              — {verse.ref}, ESV
+              — {verse.reference}, ESV
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Controls & Progress */}
+        {/* Controls */}
         <div className="devotion-controls">
           <button
             className="nav-btn"
@@ -194,7 +217,7 @@ export default function DailyDevotion() {
             <ChevronLeft />
           </button>
 
-          {/* Dot indicators */}
+          {/* Dots */}
           <div className="verse-dots">
             {verses.map((_, i) => (
               <button
@@ -218,16 +241,21 @@ export default function DailyDevotion() {
           </button>
         </div>
 
-        {/* Progress bar */}
+        {/* Progress */}
         <div className="progress-track">
           <motion.div
             className="progress-fill"
-            style={{ width: `${progress * 100}%` }}
+            style={{
+              width: `${progress * 100}%`,
+            }}
           />
         </div>
 
+        {/* Count */}
         <p className="verse-count">
-          {verseIndex + 1} / {verses.length}
+          {verses.length === 0
+            ? "0 / 0"
+            : `${verseIndex + 1} / ${verses.length}`}
         </p>
       </div>
     </section>
