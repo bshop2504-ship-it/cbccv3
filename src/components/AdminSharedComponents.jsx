@@ -102,38 +102,51 @@ export function ImagePicker({
   label = "Image",
   height = 160,
 }) {
-  const [tab, setTab] = useState(
-    value && !value.startsWith("blob:") ? "url" : "device",
-  );
+  const [tab, setTab] = useState(typeof value === "string" ? "url" : "device");
+
   const [urlInput, setUrlInput] = useState(
-    value && !value.startsWith("blob:") ? value : "",
+    typeof value === "string" ? value : "",
   );
+
   const [dragging, setDragging] = useState(false);
+
   const fileRef = useRef(null);
 
+  // Preview handler
+  const preview = value instanceof File ? URL.createObjectURL(value) : value;
+
+  // Apply file
   const applyFile = (file) => {
     if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = (e) => onChange(e.target.result);
-    reader.readAsDataURL(file);
+
+    // IMPORTANT:
+    // send actual File object
+    onChange(file);
   };
 
+  // Drag drop
   const handleDrop = (e) => {
     e.preventDefault();
     setDragging(false);
+
     applyFile(e.dataTransfer.files[0]);
   };
 
+  // URL apply
   const handleUrlApply = () => {
-    if (urlInput.trim()) onChange(urlInput.trim());
+    if (urlInput.trim()) {
+      onChange(urlInput.trim());
+    }
   };
 
+  // Clear
   const clear = () => {
     onChange("");
     setUrlInput("");
   };
 
-  const tabBtn = (id, lbl) => ({
+  // Tab button style
+  const tabBtn = (id) => ({
     padding: "6px 14px",
     borderRadius: 8,
     border: "none",
@@ -148,6 +161,7 @@ export function ImagePicker({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {/* Header */}
       <div
         style={{
           display: "flex",
@@ -167,6 +181,7 @@ export function ImagePicker({
         >
           {label}
         </label>
+
         <div
           style={{
             display: "flex",
@@ -178,22 +193,15 @@ export function ImagePicker({
         >
           <button
             type="button"
-            style={tabBtn("url", "URL")}
-            onClick={() => setTab("url")}
-          >
-            🔗 URL
-          </button>
-          <button
-            type="button"
-            style={tabBtn("device", "Device")}
+            style={tabBtn("device")}
             onClick={() => setTab("device")}
           >
-            📁 Device
+            Device
           </button>
         </div>
       </div>
 
-      {/* Preview if image set */}
+      {/* Preview */}
       {value && (
         <div
           style={{
@@ -205,7 +213,7 @@ export function ImagePicker({
           }}
         >
           <img
-            src={value}
+            src={preview}
             alt="Preview"
             style={{
               width: "100%",
@@ -215,6 +223,8 @@ export function ImagePicker({
             }}
             onError={() => onChange("")}
           />
+
+          {/* Remove */}
           <button
             type="button"
             onClick={clear}
@@ -238,6 +248,8 @@ export function ImagePicker({
           >
             ×
           </button>
+
+          {/* Label */}
           <div
             style={{
               position: "absolute",
@@ -256,49 +268,13 @@ export function ImagePicker({
                 letterSpacing: "0.1em",
               }}
             >
-              {value.startsWith("data:") ? "FROM DEVICE" : "FROM URL"}
+              {value instanceof File ? "FROM DEVICE" : "FROM URL"}
             </span>
           </div>
         </div>
       )}
 
-      {/* URL tab */}
-      {tab === "url" && !value && (
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            type="text"
-            value={urlInput}
-            onChange={(e) => setUrlInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleUrlApply()}
-            placeholder="https://example.com/image.jpg"
-            style={{
-              flex: 1,
-              padding: "10px 14px",
-              borderRadius: 10,
-              border: "1px solid rgba(9,60,93,0.14)",
-              background: "rgba(9,60,93,0.03)",
-              color: "#093C5D",
-              fontSize: 13,
-              fontFamily: "DM Sans, sans-serif",
-              outline: "none",
-            }}
-          />
-          <button
-            type="button"
-            onClick={handleUrlApply}
-            style={{
-              ...btnStyles.primary,
-              padding: "10px 16px",
-              fontSize: 12,
-              whiteSpace: "nowrap",
-            }}
-          >
-            Apply
-          </button>
-        </div>
-      )}
-
-      {/* Device tab */}
+      {/* Upload Area */}
       {tab === "device" && !value && (
         <div
           onDragOver={(e) => {
@@ -309,7 +285,7 @@ export function ImagePicker({
           onDrop={handleDrop}
           onClick={() => fileRef.current?.click()}
           style={{
-            height: height,
+            height,
             borderRadius: 12,
             cursor: "pointer",
             border: `2px dashed ${dragging ? "#6FD1D7" : "rgba(9,60,93,0.2)"}`,
@@ -332,7 +308,9 @@ export function ImagePicker({
               background: dragging
                 ? "rgba(111,209,215,0.15)"
                 : "rgba(9,60,93,0.06)",
-              border: `1.5px dashed ${dragging ? "#6FD1D7" : "rgba(9,60,93,0.2)"}`,
+              border: `1.5px dashed ${
+                dragging ? "#6FD1D7" : "rgba(9,60,93,0.2)"
+              }`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -342,6 +320,7 @@ export function ImagePicker({
           >
             📷
           </div>
+
           <div style={{ textAlign: "center" }}>
             <p
               style={{
@@ -353,6 +332,7 @@ export function ImagePicker({
             >
               {dragging ? "Drop image here" : "Click or drag to upload"}
             </p>
+
             <p
               style={{
                 fontSize: 11,
@@ -363,6 +343,7 @@ export function ImagePicker({
               JPG, PNG, WEBP, GIF
             </p>
           </div>
+
           <input
             ref={fileRef}
             type="file"

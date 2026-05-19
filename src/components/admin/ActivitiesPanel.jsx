@@ -1,10 +1,9 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Icon } from "../../assets/svg/Icon";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Field,
   Input,
-  Select,
   ImagePicker,
   Modal,
   ConfirmDelete,
@@ -13,19 +12,31 @@ import {
 import {
   SectionHeader,
   ModalFooter,
-  EmptyState,
-  tagStyle,
-  tableStyles,
   formGrid,
 } from "../AdminSharedSubComponents";
-// ─── PANEL: Recent Activities ──────────────────────────────────────
+
+import { createRecentActivity } from "../../api/recentActivity/create";
+import { fetchRecentActivities } from "../../api/recentActivity/read";
+import { updateRecentActivity } from "../../api/recentActivity/update";
+import { deleteRecentActivity } from "../../api/recentActivity/delete";
 export default function ActivitiesPanel({ data, setData }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const empty = { title: "", subtitle: "", description: "", date: "", img: "" };
+
+  const empty = {
+    title: "",
+    subtitle: "",
+    description: "",
+    date: "",
+    img: "",
+  };
+
   const [form, setForm] = useState(empty);
   const [errors, setErrors] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const uid = () => Date.now() + Math.random();
 
   const openAdd = () => {
     setEditing(null);
@@ -33,6 +44,7 @@ export default function ActivitiesPanel({ data, setData }) {
     setErrors({});
     setModalOpen(true);
   };
+
   const openEdit = (item) => {
     setEditing(item);
     setForm({ ...item });
@@ -42,30 +54,116 @@ export default function ActivitiesPanel({ data, setData }) {
 
   const validate = () => {
     const e = {};
+
     if (!form.title.trim()) e.title = "Title is required";
     if (!form.date.trim()) e.date = "Date is required";
+
     return e;
   };
 
-  const save = () => {
-    const e = validate();
-    if (Object.keys(e).length) {
-      setErrors(e);
+  const save = async () => {
+    const validation = validate();
+
+    if (Object.keys(validation).length > 0) {
+      setErrors(validation);
       return;
     }
-    if (editing) {
-      setData((d) =>
-        d.map((x) => (x.id === editing.id ? { ...x, ...form } : x)),
-      );
-    } else {
-      setData((d) => [...d, { id: uid(), ...form }]);
-    }
-    setModalOpen(false);
-  };
 
-  const remove = (id) => {
-    setData((d) => d.filter((x) => x.id !== id));
+    setLoading(true);
+
+    try {
+      // EDIT MODE
+      if (editing) {
+        const result = await updateRecentActivity({
+          id: editing.id,
+          title: form.title,
+          subtitle: form.subtitle,
+          description: form.description,
+          date: form.date,
+          img: form.img,
+          oldImg: editing.img,
+        });
+
+        if (!result.success) {
+          console.error(result.error);
+          setLoading(false);
+          return;
+        }
+
+        setData((prev) =>
+          prev.map((item) => (item.id === editing.id ? result.data[0] : item)),
+        );
+      }
+
+      // CREATE MODE
+      else {
+        const result = await createRecentActivity({
+          title: form.title,
+          subtitle: form.subtitle,
+          description: form.description,
+          date: form.date,
+          img: form.img,
+        });
+
+        if (!result.success) {
+          console.error(result.error);
+
+          setLoading(false);
+          return;
+        }
+
+        setData((prev) => [result.data[0], ...prev]);
+      }
+
+      // Reset modal
+      setModalOpen(false);
+      setForm(empty);
+      setEditing(null);
+      setErrors({});
+    } catch (err) {
+      console.error(err);
+    }
+
+    setLoading(false);
+  };
+  useEffect(() => {
+    const loadActivities = async () => {
+      const result = await fetchRecentActivities();
+
+      if (result.success) {
+        setData(result.data);
+      } else {
+        console.error("Failed to load activities:", result.error);
+      }
+    };
+
+    loadActivities();
+  }, [setData]);
+
+  const remove = async (item) => {
+    if (!item?.id) {
+      console.error("Missing ID:", item);
+      return;
+    }
+
+    setLoading(true);
+
+    const result = await deleteRecentActivity({
+      id: item.id,
+      img: item.img, // 👈 REQUIRED for storage deletion
+    });
+
+    if (!result.success) {
+      console.error(result.error);
+      setLoading(false);
+      return;
+    }
+
+    // remove from UI
+    setData((d) => d.filter((x) => x.id !== item.id));
     setDeleteTarget(null);
+
+    setLoading(false);
   };
 
   return (
@@ -77,6 +175,7 @@ export default function ActivitiesPanel({ data, setData }) {
         onAdd={openAdd}
         addLabel="Add Activity"
       />
+
       <div
         style={{
           display: "grid",
@@ -123,6 +222,7 @@ export default function ActivitiesPanel({ data, setData }) {
                   <Icon.Image />
                 </div>
               )}
+
               <div
                 style={{
                   position: "absolute",
@@ -142,6 +242,7 @@ export default function ActivitiesPanel({ data, setData }) {
                 >
                   <Icon.Edit />
                 </button>
+
                 <button
                   onClick={() => setDeleteTarget(item)}
                   style={{
@@ -154,6 +255,7 @@ export default function ActivitiesPanel({ data, setData }) {
                 </button>
               </div>
             </div>
+
             {/* Info */}
             <div style={{ padding: "14px 16px" }}>
               {item.subtitle && (
@@ -171,6 +273,7 @@ export default function ActivitiesPanel({ data, setData }) {
                   {item.subtitle}
                 </span>
               )}
+
               <p
                 style={{
                   fontWeight: 600,
@@ -182,6 +285,7 @@ export default function ActivitiesPanel({ data, setData }) {
               >
                 {item.title}
               </p>
+
               {item.description && (
                 <p
                   style={{
@@ -198,6 +302,7 @@ export default function ActivitiesPanel({ data, setData }) {
                   {item.description}
                 </p>
               )}
+
               <span
                 style={{
                   fontFamily: "DM Mono, monospace",
@@ -210,6 +315,7 @@ export default function ActivitiesPanel({ data, setData }) {
             </div>
           </motion.div>
         ))}
+
         {/* Add card */}
         <motion.button
           whileHover={{ scale: 1.02 }}
@@ -242,6 +348,7 @@ export default function ActivitiesPanel({ data, setData }) {
           >
             <Icon.Plus />
           </div>
+
           <span
             style={{
               fontSize: 12,
@@ -254,6 +361,7 @@ export default function ActivitiesPanel({ data, setData }) {
         </motion.button>
       </div>
 
+      {/* MODAL */}
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -266,51 +374,80 @@ export default function ActivitiesPanel({ data, setData }) {
             <Input
               value={form.title}
               onChange={(e) =>
-                setForm((f) => ({ ...f, title: e.target.value }))
+                setForm((f) => ({
+                  ...f,
+                  title: e.target.value,
+                }))
               }
               placeholder="e.g. Sunday Worship — April 27"
             />
           </Field>
+
           <Field label="Subtitle / Category">
             <Input
               value={form.subtitle}
               onChange={(e) =>
-                setForm((f) => ({ ...f, subtitle: e.target.value }))
+                setForm((f) => ({
+                  ...f,
+                  subtitle: e.target.value,
+                }))
               }
               placeholder="e.g. Weekly Gathering, Youth, Outreach"
             />
           </Field>
+
           <Field label="Date" required error={errors.date}>
             <Input
+              type="date"
               value={form.date}
-              onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-              placeholder="e.g. April 27, 2025"
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  date: e.target.value,
+                }))
+              }
             />
           </Field>
+
           <ImagePicker
             label="Activity Image"
             value={form.img}
-            onChange={(val) => setForm((f) => ({ ...f, img: val }))}
+            onChange={(val) =>
+              setForm((f) => ({
+                ...f,
+                img: val,
+              }))
+            }
             height={160}
           />
+
           <Field label="Description">
             <Input
               value={form.description}
               onChange={(e) =>
-                setForm((f) => ({ ...f, description: e.target.value }))
+                setForm((f) => ({
+                  ...f,
+                  description: e.target.value,
+                }))
               }
               placeholder="Brief description of the activity..."
               rows={3}
             />
           </Field>
         </div>
-        <ModalFooter onClose={() => setModalOpen(false)} onSave={save} />
+
+        <ModalFooter
+          onClose={() => setModalOpen(false)}
+          onSave={save}
+          loading={loading}
+        />
       </Modal>
 
+      {/* DELETE */}
       <ConfirmDelete
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
-        onConfirm={() => remove(deleteTarget?.id)}
+        onConfirm={() => deleteTarget && remove(deleteTarget)}
         itemName={deleteTarget?.title}
       />
     </div>
