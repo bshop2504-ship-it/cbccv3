@@ -4,10 +4,10 @@ const extractPathFromUrl = (url) => {
   if (!url) return null;
 
   try {
-    const urlObj = new URL(url);
-    const parts = urlObj.pathname.split("/cbcc-bucket/");
-    return parts[1] || null;
+    return url.split("/cbcc-bucket/")[1];
   } catch (err) {
+    console.error("Path extraction failed:", err);
+
     return null;
   }
 };
@@ -23,17 +23,19 @@ export const updateRecentActivity = async ({
 }) => {
   try {
     let imageUrl = oldImg || null;
-    let newImagePath = null;
 
-    // ─── 1. Upload NEW image first ─────────────────────────────
+    // ─── UPLOAD NEW IMAGE ──────────────────────────────────────
     if (img && typeof img !== "string") {
       const fileExt = img.name.split(".").pop();
-      const fileName = `${Date.now()}.${fileExt}`;
-      newImagePath = `recent-act-files/${fileName}`;
 
+      const fileName = `${Date.now()}.${fileExt}`;
+
+      const filePath = `recent-act-files/${fileName}`;
+
+      // Upload new image
       const { error: uploadError } = await supabase.storage
         .from("cbcc-bucket")
-        .upload(newImagePath, img, {
+        .upload(filePath, img, {
           cacheControl: "3600",
           upsert: false,
         });
@@ -45,14 +47,33 @@ export const updateRecentActivity = async ({
         };
       }
 
+      // Get public URL
       const { data: publicData } = supabase.storage
         .from("cbcc-bucket")
-        .getPublicUrl(newImagePath);
+        .getPublicUrl(filePath);
 
       imageUrl = publicData.publicUrl;
+
+      // ─── DELETE OLD IMAGE ────────────────────────────────────
+      if (oldImg) {
+        const oldPath = extractPathFromUrl(oldImg);
+
+        console.log("Deleting old file:", oldPath);
+
+        if (oldPath) {
+          const { data: deleteData, error: deleteError } =
+            await supabase.storage.from("cbcc-bucket").remove([oldPath]);
+
+          console.log("Old image delete response:", deleteData);
+
+          if (deleteError) {
+            console.error("Old image delete error:", deleteError.message);
+          }
+        }
+      }
     }
 
-    // ─── 2. Update DB FIRST ─────────────────────────────
+    // ─── UPDATE DATABASE ──────────────────────────────────────
     const { data, error } = await supabase
       .from("recent_activities")
       .update({
@@ -70,23 +91,6 @@ export const updateRecentActivity = async ({
         success: false,
         error: error.message,
       };
-    }
-
-    // ─── 3. DELETE OLD IMAGE ONLY AFTER SUCCESS ─────────────────
-    if (img && typeof img !== "string" && oldImg) {
-      const oldPath = extractPathFromUrl(oldImg);
-
-      if (oldPath) {
-        const { error: deleteError } = await supabase.storage
-          .from("cbcc-bucket")
-          .remove([oldPath]);
-
-        if (deleteError) {
-          console.error("Old image delete failed:", deleteError.message);
-        } else {
-          console.log("Old image deleted:", oldPath);
-        }
-      }
     }
 
     return {

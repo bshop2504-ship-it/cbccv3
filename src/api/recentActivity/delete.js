@@ -1,82 +1,46 @@
 import { supabase } from "../../lib/supabaseClient";
 
-/**
- * Delete recent activity (DB + Storage)
- */
 export const deleteRecentActivity = async ({ id, img }) => {
   try {
-    // ─────────────────────────────────────
-    // Extract storage path from Supabase public URL
-    // ─────────────────────────────────────
-    const extractStoragePath = (url) => {
-      try {
-        if (!url) return null;
+    // DELETE STORAGE FILE
+    if (img) {
+      const filePath = img.split("/cbcc-bucket/")[1];
 
-        // remove query params if any
-        const cleanUrl = url.split("?")[0];
+      console.log("Deleting:", filePath);
 
-        // your bucket name is: cbcc-bucket
-        const marker = "/cbcc-bucket/";
-
-        const index = cleanUrl.indexOf(marker);
-
-        if (index === -1) return null;
-
-        return cleanUrl.substring(index + marker.length);
-      } catch (err) {
-        return null;
-      }
-    };
-
-    const storagePath = extractStoragePath(img);
-
-    console.log("DELETE STORAGE PATH:", storagePath);
-
-    // ─────────────────────────────────────
-    // DELETE FROM STORAGE FIRST
-    // ─────────────────────────────────────
-    if (storagePath) {
-      const { error: storageError } = await supabase.storage
+      const { data, error } = await supabase.storage
         .from("cbcc-bucket")
-        .remove([storagePath]);
+        .remove([filePath]);
 
-      if (storageError) {
-        console.error("Storage delete error:", storageError);
+      console.log("DELETE RESULT:", data);
+
+      if (error) {
+        console.error(error);
 
         return {
           success: false,
-          error: storageError.message,
+          error: error.message,
         };
       }
     }
 
-    // ─────────────────────────────────────
-    // DELETE FROM DATABASE
-    // ─────────────────────────────────────
-    const { error: dbError } = await supabase
+    // DELETE DATABASE ROW
+    const { error } = await supabase
       .from("recent_activities")
       .delete()
       .eq("id", id);
 
-    if (dbError) {
-      console.error("DB delete error:", dbError);
-
+    if (error) {
       return {
         success: false,
-        error: dbError.message,
+        error: error.message,
       };
     }
 
-    // ─────────────────────────────────────
-    // SUCCESS
-    // ─────────────────────────────────────
     return {
       success: true,
-      message: "Deleted successfully",
     };
   } catch (err) {
-    console.error("Unexpected delete error:", err);
-
     return {
       success: false,
       error: err.message,
