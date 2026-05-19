@@ -13,73 +13,55 @@ import {
   SignalIcon,
 } from "../../assets/svg/Icons";
 
-const activities = [
-  {
-    id: 1,
-    src: "https://images.unsplash.com/photo-1529070538774-1843cb3265df?w=1200&q=80",
-    title: "Sunday Worship — April 27",
-    category: "Worship",
-    date: "April 27, 2025",
-  },
-  {
-    id: 2,
-    src: "https://images.unsplash.com/photo-1609234656388-0ff363383899?w=1200&q=80",
-    title: "Youth Discipleship Retreat",
-    category: "Youth",
-    date: "April 19–21, 2025",
-  },
-  {
-    id: 3,
-    src: "https://images.unsplash.com/photo-1532629345422-7515f3d16bb6?w=1200&q=80",
-    title: "Community Outreach — Barangay Atulayan",
-    category: "Outreach",
-    date: "April 13, 2025",
-  },
-  {
-    id: 4,
-    src: "https://images.unsplash.com/photo-1504052434569-70ad5836ab65?w=1200&q=80",
-    title: "Easter Sunday Celebration",
-    category: "Special Event",
-    date: "April 20, 2025",
-  },
-  {
-    id: 5,
-    src: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&q=80",
-    title: "Discipleship Training School — Batch 12",
-    category: "Education",
-    date: "April 5, 2025",
-  },
-  {
-    id: 6,
-    src: "https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=1200&q=80",
-    title: "Men's Breakfast & Fellowship",
-    category: "Men's Ministry",
-    date: "April 12, 2025",
-  },
-  {
-    id: 7,
-    src: "https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=1200&q=80",
-    title: "Life Groups Gathering — District Wide",
-    category: "Community",
-    date: "March 29, 2025",
-  },
-  {
-    id: 8,
-    src: "https://images.unsplash.com/photo-1541802645635-11f2286a7482?w=1200&q=80",
-    title: "Water Baptism Service",
-    category: "Sacrament",
-    date: "March 23, 2025",
-  },
-];
-
+import { fetchRecentActivities } from "../../api/recentActivity/read";
+import { supabase } from "../../lib/supabaseClient";
 // ─── Recent Activities Section ──────────────────────────────────────
 export default function RecentActivities() {
+  const [activities, setActivities] = useState([]);
   const [active, setActive] = useState(0);
   const [prevActive, setPrevActive] = useState(null);
   const [progress, setProgress] = useState(0);
   const intervalRef = useRef(null);
   const progressRef = useRef(null);
   const DURATION = 10000;
+
+  useEffect(() => {
+    const loadActivities = async () => {
+      const result = await fetchRecentActivities();
+
+      if (result.success) {
+        setActivities(result.data);
+      } else {
+        console.error(result.error);
+      }
+    };
+
+    loadActivities();
+
+    // ─── Realtime Subscription ─────────────────────────────
+    const channel = supabase
+      .channel("recent-activities-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "recent_activities",
+        },
+        async () => {
+          const result = await fetchRecentActivities();
+
+          if (result.success) {
+            setActivities(result.data);
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const goTo = (idx) => {
     setPrevActive(active);
@@ -127,8 +109,8 @@ export default function RecentActivities() {
   const prev = () => goTo((active - 1 + activities.length) % activities.length);
   const next = () => goTo((active + 1) % activities.length);
 
-  const current = activities[active];
-
+  const current = activities[active] || {};
+  if (!activities.length) return null;
   return (
     <section className="cbcc-section activities-section">
       <div className="section-eyebrow">
@@ -174,7 +156,7 @@ export default function RecentActivities() {
           <motion.div
             key={active}
             className="ra-slide"
-            style={{ backgroundImage: `url(${current.src})` }}
+            style={{ backgroundImage: `url(${current.img})` }}
             initial={{ opacity: 0, scale: 1.04 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
@@ -220,7 +202,7 @@ export default function RecentActivities() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             >
-              <span className="ra-category">{current.category}</span>
+              <span className="ra-category">{current.subtitle}</span>
               <div className="ra-title">{current.title}</div>
               <div className="ra-date">{current.date}</div>
             </motion.div>
@@ -252,7 +234,7 @@ export default function RecentActivities() {
           <motion.button
             key={act.id}
             className={`ra-thumb ${i === active ? "active" : ""}`}
-            style={{ backgroundImage: `url(${act.src})` }}
+            style={{ backgroundImage: `url(${act.img})` }}
             onClick={() => goTo(i)}
             whileHover={{ scale: 1.06 }}
             transition={{ duration: 0.2 }}
