@@ -1,227 +1,290 @@
-import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  BookOpenIcon,
-  CalendarIcon,
-  RadioIcon,
-  CrossIcon,
-  ChevronLeft,
-  ChevronRight,
-  ClockIcon,
-  UserIcon,
-  PlayIcon,
-  SignalIcon,
-} from "../../assets/svg/Icons";
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { Icon } from "../../assets/svg/Icon";
+import { supabase } from "../../lib/supabaseClient";
+import { fetchLiveStreams } from "../../api/livestream/livelink";
 
 export default function LiveService() {
   const [watching, setWatching] = useState(false);
-  const [chatMsg, setChatMsg] = useState("");
-  const [chatLog, setChatLog] = useState([
-    {
-      user: "Sister Maria",
-      msg: "Praise God! Joining from Aparri 🙏",
-      time: "9:02 AM",
-    },
-    {
-      user: "Bro. Juan",
-      msg: "Amen! The worship is powerful today",
-      time: "9:04 AM",
-    },
-    {
-      user: "Ptr. Grace",
-      msg: "Good morning church family! God bless you all",
-      time: "9:06 AM",
-    },
-    {
-      user: "Anonymous",
-      msg: "First time joining online. So blessed!",
-      time: "9:08 AM",
-    },
-  ]);
-  const [viewers] = useState(243);
-  const chatEndRef = useRef(null);
+  const [floating, setFloating] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
 
-  const isLive = true; // mock
-  const nextServiceTime = "Sunday, May 4 · 9:00 AM";
+  const [liveData, setLiveData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const sendChat = (e) => {
-    e.preventDefault();
-    if (!chatMsg.trim()) return;
-    setChatLog((l) => [
-      ...l,
-      {
-        user: "You",
-        msg: chatMsg.trim(),
-        time: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      },
-    ]);
-    setChatMsg("");
-  };
+  const viewers = 243;
+  const isLive = true;
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatLog]);
+    const handleKey = (e) => {
+      if (e.key === "Escape") setFullscreen(false);
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, []);
 
-  return (
-    <section className="cbcc-section live-section">
-      <div className="section-eyebrow">
-        <span className="eyebrow-icon live-pulse">
-          <RadioIcon />
-        </span>
-        <span>Live Service</span>
-        {isLive && (
-          <span className="live-badge">
-            <span className="live-dot" />
+  useEffect(() => {
+    let channel;
+
+    const loadLive = async () => {
+      const result = await fetchLiveStreams();
+
+      if (result.success) {
+        setLiveData(result.data);
+      }
+
+      setLoading(false);
+
+      // REALTIME LISTENER
+      channel = supabase
+        .channel("livestream-realtime")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "livestream_tb",
+          },
+          async () => {
+            const updated = await fetchLiveStreams();
+
+            if (updated.success) {
+              setLiveData(updated.data);
+            }
+          },
+        )
+        .subscribe();
+    };
+
+    loadLive();
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="w-full min-h-screen flex items-center justify-center">
+        Loading live stream...
+      </div>
+    );
+  }
+
+  if (!liveData) {
+    return (
+      <section className="w-full min-h-screen flex flex-col items-center justify-center py-10 px-4 bg-[#f5f5f5]">
+        {/* HEADER */}
+        <div className="flex items-center gap-3 mb-8 w-full max-w-6xl">
+          <span className="text-cyan-400 animate-pulse">
+            <Icon.Radio />
+          </span>
+
+          <span className="tracking-[0.3em] text-sm font-medium text-[#295a7a] uppercase">
+            Live Service
+          </span>
+
+          <span className="flex items-center gap-1 bg-red-500 text-white text-xs px-3 py-1 rounded-full font-semibold shadow">
+            <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
             LIVE
           </span>
-        )}
-      </div>
+        </div>
 
-      <div className={`live-layout ${watching ? "watching" : ""}`}>
-        {/* Video Panel */}
-        <div className="live-video-panel">
-          {!watching ? (
-            <div className="live-placeholder">
-              <div className="live-placeholder-bg" />
-              <div className="live-placeholder-content">
-                {isLive ? (
-                  <>
-                    <div className="live-pulse-ring" />
+        {/* EMPTY CARD */}
+        <div className="w-full max-w-6xl">
+          <div
+            className="relative h-[500px] rounded-[30px] overflow-hidden flex items-center justify-center"
+            style={{
+              background:
+                "linear-gradient(135deg, #0f4a73 0%, #216796 55%, #2f7ca8 100%)",
+            }}
+          >
+            {/* DARK OVERLAY */}
+            <div className="absolute inset-0 bg-black/10" />
+
+            {/* CONTENT */}
+            <div className="relative z-10 flex flex-col items-center text-center text-white">
+              {/* PLAY BUTTON */}
+              <div className="relative flex items-center justify-center">
+                <div className="absolute w-44 h-44 rounded-full border border-cyan-300/10 animate-pulse" />
+
+                <div className="absolute w-28 h-28 rounded-full bg-cyan-300/10" />
+
+                <button className="w-24 h-24 rounded-full bg-cyan-300 flex items-center justify-center shadow-2xl hover:scale-105 transition">
+                  <Icon.Play />
+                </button>
+              </div>
+
+              {/* TITLE */}
+              <h2 className="mt-10 text-4xl font-bold tracking-tight">
+                No Live Stream Available
+              </h2>
+
+              {/* SUBTITLE */}
+              <p className="mt-2 text-cyan-100 text-lg opacity-80">
+                Please wait for the next worship celebration
+              </p>
+
+              {/* WATCHERS */}
+              <div className="flex items-center gap-2 mt-6 text-cyan-100 opacity-70">
+                <Icon.Signal />
+                <span>0 watching</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const Player = () => {
+    if (!liveData) return null;
+
+    return (
+      <motion.div
+        className={`relative bg-black flex items-center justify-center ${
+          fullscreen
+            ? "w-screen h-screen"
+            : "h-[420px] w-full rounded-2xl overflow-hidden"
+        }`}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+      >
+        <iframe
+          className="absolute inset-0 w-full h-full"
+          src={`https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(
+            liveData?.link,
+          )}&show_text=false&width=560&t=0`}
+          style={{ border: "none", overflow: "hidden" }}
+          scrolling="no"
+          frameBorder="0"
+          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share"
+          allowFullScreen
+        />
+
+        <div className="absolute bottom-4 left-4 flex gap-2">
+          <button
+            onClick={() => {
+              setWatching(false);
+              setFloating(false);
+              setFullscreen(false);
+            }}
+            className="w-10 h-10 flex items-center justify-center bg-red-500 text-white rounded-full transition hover:scale-105"
+          >
+            <Icon.Stop />
+          </button>
+          <button
+            onClick={() => setFloating(true)}
+            className="w-10 h-10 flex items-center justify-center bg-white/90 hover:bg-white rounded-full transition"
+          >
+            <Icon.Minimize />
+          </button>
+
+          <button
+            onClick={() => setFullscreen(!fullscreen)}
+            className="w-10 h-10 flex items-center justify-center bg-white/90 hover:bg-white rounded-full transition"
+          >
+            {fullscreen ? <Icon.FullscreenExit /> : <Icon.Fullscreen />}
+          </button>
+        </div>
+      </motion.div>
+    );
+  };
+
+  return (
+    <>
+      {/* NORMAL PAGE */}
+      {!floating && (
+        <section className="w-full min-h-screen flex flex-col items-center justify-center py-10 px-4 bg-gray-50">
+          {/* HEADER */}
+          <div className="flex items-center gap-3 mb-8">
+            <span className="text-blue-500 animate-pulse">
+              <Icon.Radio />
+            </span>
+
+            <span className="tracking-widest text-sm font-semibold text-gray-600">
+              LIVE SERVICE
+            </span>
+
+            {isLive && (
+              <span className="flex items-center gap-1 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                LIVE
+              </span>
+            )}
+          </div>
+
+          {/* CARD */}
+          <div className="w-full flex justify-center">
+            <div className="w-full max-w-4xl">
+              <div className="rounded-2xl overflow-hidden shadow-xl bg-white">
+                {!watching ? (
+                  <div
+                    className="relative h-[420px] flex items-center justify-center"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, #1e6899 0%, #2f7fa5 50%, #3a7597 100%)",
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-black/10" />
+
+                    {/* PLAY */}
                     <button
-                      className="live-play-btn"
                       onClick={() => setWatching(true)}
+                      className="relative z-10 w-20 h-20 rounded-full bg-white/20 backdrop-blur flex items-center justify-center hover:scale-110 transition"
                     >
-                      <PlayIcon />
+                      <Icon.Play />
                     </button>
-                    <div className="live-info">
-                      <p className="live-title">Sunday Worship Celebration</p>
-                      <p className="live-speaker">Ptr. Ramon Santos</p>
-                    </div>
-                    <div className="live-viewer-count">
-                      <SignalIcon />
-                      <span>{viewers.toLocaleString()} watching</span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="live-offline">
-                    <div className="offline-icon">
-                      <RadioIcon />
-                    </div>
-                    <p className="offline-title">Service Not Live Yet</p>
-                    <p className="offline-sub">
-                      Next service: {nextServiceTime}
-                    </p>
-                    <div className="offline-countdown">
-                      <span>Join us soon</span>
+
+                    {/* INFO */}
+                    <div className="absolute bottom-6 text-white text-center">
+                      <h2 className="text-xl font-semibold">
+                        {liveData.title || "Live Service"}
+                      </h2>
+                      <p className="text-sm opacity-80">
+                        {liveData.speaker || "Church Service"}
+                      </p>
+
+                      <div className="flex items-center justify-center gap-2 mt-2 text-sm opacity-80">
+                        <Icon.Signal />
+                        <span>{viewers.toLocaleString()} watching</span>
+                      </div>
                     </div>
                   </div>
+                ) : (
+                  <Player />
                 )}
               </div>
             </div>
-          ) : (
-            <div className="live-active">
-              {/* Mock video player */}
-              <div className="mock-player">
-                <div className="mock-player-bg" />
-                <div className="mock-player-overlay">
-                  <div className="player-live-chip">
-                    <span className="live-dot" />
-                    LIVE
-                  </div>
-                  <div className="player-info">
-                    <p className="player-title">Sunday Worship Celebration</p>
-                    <p className="player-speaker">
-                      Ptr. Ramon Santos · {viewers} watching
-                    </p>
-                  </div>
-                </div>
-                {/* Animated waveform */}
-                <div className="waveform">
-                  {[...Array(24)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="wave-bar"
-                      style={{
-                        animationDelay: `${i * 0.07}s`,
-                        height: `${20 + Math.sin(i * 0.8) * 18}px`,
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-              <button
-                className="stop-live-btn"
-                onClick={() => setWatching(false)}
-              >
-                Stop Watching
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Chat Panel */}
-        <div className="live-chat-panel">
-          <div className="chat-header">
-            <span className="chat-title">Live Chat</span>
-            <span className="chat-count">{chatLog.length} messages</span>
           </div>
-          <div className="chat-messages">
-            {chatLog.map((msg, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className={`chat-msg ${msg.user === "You" ? "own" : ""}`}
-              >
-                <span className="chat-user">{msg.user}</span>
-                <span className="chat-text">{msg.msg}</span>
-                <span className="chat-time">{msg.time}</span>
-              </motion.div>
-            ))}
-            <div ref={chatEndRef} />
-          </div>
-          <form className="chat-input-row" onSubmit={sendChat}>
-            <input
-              type="text"
-              placeholder="Say something..."
-              value={chatMsg}
-              onChange={(e) => setChatMsg(e.target.value)}
-              className="chat-input"
-              maxLength={120}
-            />
-            <button type="submit" className="chat-send">
-              Send
-            </button>
-          </form>
-        </div>
-      </div>
+        </section>
+      )}
 
-      {/* Schedule Strip */}
-      <div className="live-schedule-strip">
-        <p className="schedule-label">Upcoming Services</p>
-        <div className="schedule-items">
-          {[
-            { label: "Sunday Worship", time: "May 4 · 9 AM", status: "live" },
-            { label: "Wednesday Prayer", time: "May 7 · 7 PM", status: "soon" },
-            { label: "Friday Youth", time: "May 9 · 6:30 PM", status: "soon" },
-          ].map((item, i) => (
-            <div key={i} className={`schedule-item ${item.status}`}>
-              <span className={`sched-dot ${item.status}`} />
-              <div>
-                <p className="sched-name">{item.label}</p>
-                <p className="sched-time">{item.time}</p>
-              </div>
-              {item.status === "live" && (
-                <span className="sched-live-chip">LIVE</span>
-              )}
-            </div>
-          ))}
+      {/* FLOATING PLAYER */}
+      {floating && !fullscreen && (
+        <motion.div
+          className="fixed bottom-5 right-5 w-80 bg-black rounded-xl shadow-2xl overflow-hidden z-50"
+          drag
+        >
+          <Player />
+
+          <button
+            onClick={() => setFloating(false)}
+            className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-red-500 text-white rounded-full"
+          >
+            <Icon.Close />
+          </button>
+        </motion.div>
+      )}
+
+      {/* FULLSCREEN */}
+      {fullscreen && (
+        <div className="fixed inset-0 z-[999] bg-black">
+          <Player />
         </div>
-      </div>
-    </section>
+      )}
+    </>
   );
 }

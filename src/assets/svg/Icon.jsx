@@ -304,4 +304,76 @@ export const Icon = {
       />
     </svg>
   ),
+  Play: () => (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  ),
+
+  Stop: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
+      <rect x="6" y="6" width="12" height="12" />
+    </svg>
+  ),
+
+  Close: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M6 6l12 12M18 6L6 18"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  ),
+
+  Minimize: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M5 12h14"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  ),
+
+  Fullscreen: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  ),
+
+  FullscreenExit: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  ),
+
+  Signal: () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path d="M2 20h2v-4H2v4zm4 0h2v-8H6v8zm4 0h2v-12h-2v12zm4 0h2v-16h-2v16zm4 0h2v-20h-2v20z" />
+    </svg>
+  ),
+
+  Radio: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="3" fill="currentColor" />
+      <path
+        d="M4 12a8 8 0 0 1 16 0M7 12a5 5 0 0 1 10 0"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+    </svg>
+  ),
 };

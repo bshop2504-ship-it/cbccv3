@@ -1,10 +1,9 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { Icon } from "../../assets/svg/Icon";
 import {
   Field,
   Input,
-  Select,
-  ImagePicker,
   Modal,
   ConfirmDelete,
   btnStyles,
@@ -13,11 +12,13 @@ import {
   SectionHeader,
   ModalFooter,
   EmptyState,
-  tagStyle,
   tableStyles,
   formGrid,
 } from "../AdminSharedSubComponents";
-// ─── PANEL: Live Service ───────────────────────────────────────────
+import { createLiveStream } from "../../api/livestream/create";
+import { fetchLiveStreams } from "../../api/livestream/read";
+import { updateLiveStream } from "../../api/livestream/update";
+import { deleteLiveStream } from "../../api/livestream/delete";
 export default function LivePanel({ data, setData }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -47,24 +48,63 @@ export default function LivePanel({ data, setData }) {
     return e;
   };
 
-  const save = () => {
+  const save = async () => {
     const e = validate();
+
     if (Object.keys(e).length) {
       setErrors(e);
       return;
     }
-    if (editing) {
-      setData((d) =>
-        d.map((x) => (x.id === editing.id ? { ...x, ...form } : x)),
-      );
-    } else {
-      setData((d) => [...d, { id: uid(), ...form }]);
-    }
-    setModalOpen(false);
-  };
 
-  const remove = (id) => {
-    setData((d) => d.filter((x) => x.id !== id));
+    try {
+      let res;
+
+      if (editing) {
+        res = await updateLiveStream({
+          id: editing.id,
+          ...form,
+        });
+      } else {
+        res = await createLiveStream(form);
+      }
+
+      if (!res.success) {
+        console.error(res.error);
+        return;
+      }
+
+      await loadLiveStreams();
+
+      setModalOpen(false);
+      setForm(empty);
+      setEditing(null);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  useEffect(() => {
+    loadLiveStreams();
+  }, []);
+
+  const loadLiveStreams = async () => {
+    const res = await fetchLiveStreams();
+
+    if (res.success) {
+      setData(res.data);
+    } else {
+      console.error(res.error);
+    }
+  };
+  const remove = async (id) => {
+    const res = await deleteLiveStream(id);
+
+    if (!res.success) {
+      console.error(res.error);
+      return;
+    }
+
+    await loadLiveStreams();
+
     setDeleteTarget(null);
   };
 
