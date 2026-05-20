@@ -23,8 +23,10 @@ const Education = lazy(() => import("./pages/Education.jsx"));
 const Membership = lazy(() => import("./pages/Membership.jsx"));
 const Contact = lazy(() => import("./pages/Contact.jsx"));
 const CBCCUpdates = lazy(() => import("./pages/CBCCUpdates.jsx"));
+const CBCCDevotion = lazy(() => import("./pages/CBCCDevotion.jsx"));
 const CBCCAdminPanel = lazy(() => import("./pages/CBCCAdminPanel.jsx"));
 const CBCCEldersPanel = lazy(() => import("./pages/CBCCEldersPanel.jsx"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword.jsx"));
 // Auth Context
 export const AuthContext = createContext(null);
 
@@ -114,6 +116,15 @@ export default function App() {
               </Lazy>
             }
           />
+
+          <Route
+            path="devotion"
+            element={
+              <Lazy>
+                <CBCCDevotion />
+              </Lazy>
+            }
+          />
           <Route
             path="ministry"
             element={
@@ -164,6 +175,14 @@ export default function App() {
           />
         </Route>
 
+        <Route
+          path="reset-password"
+          element={
+            <Lazy>
+              <ResetPassword />
+            </Lazy>
+          }
+        />
         {/* ADMIN */}
         <Route
           path="cbccadmin"

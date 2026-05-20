@@ -8,6 +8,7 @@ import cbcclogo from "../assets/images/cbcclogo.webp";
 const navLinks = [
   { label: "Home", path: "/" },
   { label: "CBCC Updates", path: "/updates" },
+  { label: "CBCC Devotions", path: "/devotion" },
   {
     label: "CBCC Primer",
     children: [
