@@ -5,7 +5,7 @@ import MainLayout from "./layouts/MainLayout.jsx";
 import LoginModal from "./components/LoginModal.jsx";
 import SuperAdminModal from "./components/SuperAdminModal.jsx";
 import SkeletonCard from "./components/SkeletonCard.jsx";
-
+import ProtectedRoute from "./routes/ProtectedRoute.jsx";
 // Lazy-loaded pages
 const Home = lazy(() => import("./pages/Home.jsx"));
 const About = lazy(() => import("./pages/About.jsx"));
@@ -132,18 +132,22 @@ export default function App() {
         <Route
           path="cbccadmin"
           element={
-            <Lazy>
-              <CBCCAdminPanel />
-            </Lazy>
+            <ProtectedRoute allowedRoles={["Super Admin", "Editor"]}>
+              <Lazy>
+                <CBCCAdminPanel />
+              </Lazy>
+            </ProtectedRoute>
           }
         />
         {/* ELDERS */}
         <Route
           path="cbccelders"
           element={
-            <Lazy>
-              <CBCCEldersPanel />
-            </Lazy>
+            <ProtectedRoute allowedRoles={["Super Admin", "Elder"]}>
+              <Lazy>
+                <CBCCEldersPanel />
+              </Lazy>
+            </ProtectedRoute>
           }
         />
       </Routes>

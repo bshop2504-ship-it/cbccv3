@@ -12,7 +12,6 @@ export default function LiveService() {
   const [liveData, setLiveData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const viewers = 243;
   const isLive = true;
 
   useEffect(() => {
@@ -249,7 +248,6 @@ export default function LiveService() {
 
                       <div className="flex items-center justify-center gap-2 mt-2 text-sm opacity-80">
                         <Icon.Signal />
-                        <span>{viewers.toLocaleString()} watching</span>
                       </div>
                     </div>
                   </div>

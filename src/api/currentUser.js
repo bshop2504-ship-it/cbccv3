@@ -1,23 +1,28 @@
 import { supabase } from "../lib/supabaseClient";
 
 export const fetchCurrentUser = async () => {
-  const { data: sessionData } = await supabase.auth.getSession();
+  const { data: sessionData, error: sessionError } =
+    await supabase.auth.getSession();
 
-  const token = sessionData?.session?.access_token;
-
-  // return null instead of crashing
-  if (!token) {
-    console.warn("No session found");
+  if (sessionError || !sessionData?.session) {
     return null;
   }
 
-  const res = await fetch("/api/me", {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const token = sessionData.session.access_token;
 
-  const data = await res.json();
-  console.log(data.user);
-  return data.user;
+  try {
+    const res = await fetch("/api/me", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    return data.user;
+  } catch (err) {
+    console.error("fetchCurrentUser error:", err);
+    return null;
+  }
 };
