@@ -1,11 +1,18 @@
-import React, { useState, lazy, Suspense, createContext } from "react";
-import { Routes, Route } from "react-router-dom";
+import React, {
+  useState,
+  lazy,
+  Suspense,
+  createContext,
+  useEffect,
+} from "react";
+import { Routes, Route, useNavigate } from "react-router-dom";
 
 import MainLayout from "./layouts/MainLayout.jsx";
 import LoginModal from "./components/LoginModal.jsx";
 import SuperAdminModal from "./components/SuperAdminModal.jsx";
 import SkeletonCard from "./components/SkeletonCard.jsx";
 import ProtectedRoute from "./routes/ProtectedRoute.jsx";
+import { fetchCurrentUser } from "./api/currentUser.js";
 // Lazy-loaded pages
 const Home = lazy(() => import("./pages/Home.jsx"));
 const About = lazy(() => import("./pages/About.jsx"));
@@ -30,6 +37,35 @@ export default function App() {
   const [showLogin, setShowLogin] = useState(false);
   const [user, setUser] = useState(null);
   const [showSuperAdminModal, setSuperAdminModal] = useState(false);
+  const navigate = useNavigate();
+  useEffect(() => {
+    const checkUser = async () => {
+      try {
+        // only run on home route
+        if (location.pathname !== "/") return;
+
+        const user = await fetchCurrentUser();
+
+        if (!user) return;
+
+        if (user.role === "Elder") {
+          navigate("/cbccelders", { replace: true });
+          return;
+        }
+
+        if (user.role === "Super Admin") {
+          setSuperAdminModal(true);
+          return;
+        }
+
+        navigate("/cbccadmin", { replace: true });
+      } catch (err) {
+        console.error("Auth check failed:", err);
+      }
+    };
+
+    checkUser();
+  }, [navigate, location.pathname]);
 
   const handleLogin = (userData, session, role) => {
     setUser(userData);

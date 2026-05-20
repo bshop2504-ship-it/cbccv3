@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import HeroSection from "../sections/HeroSection.jsx";
@@ -28,6 +28,7 @@ import {
 } from "../assets/svg/Icons.jsx";
 import miniPhilosophyImg from "../assets/images/miniPhilo.webp";
 import coreValuesImg from "../assets/images/corevalue.webp";
+import { fetchCurrentUser } from "../api/currentUser.js";
 const coreValues = [
   {
     icon: <BookIcon size={22} color="#093C5D" />,
