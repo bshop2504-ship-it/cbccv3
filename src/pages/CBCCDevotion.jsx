@@ -223,8 +223,7 @@ export default function CBCCDevotion() {
             </h1>
 
             <p className="text-white/50 text-sm max-w-sm mx-auto">
-              Bulletins, media, and documents from Cauayan Bible Christian
-              Church.
+              Bulletins, media, and documents
             </p>
           </div>
         </header>

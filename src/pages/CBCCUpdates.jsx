@@ -759,20 +759,6 @@ export default function CBCCUpdates() {
         >
           <RecentActivities />
         </motion.div>
-
-        {/* Footer note */}
-        <div
-          style={{
-            textAlign: "center",
-            padding: "32px 24px 48px",
-            fontFamily: "DM Mono, monospace",
-            fontSize: "11px",
-            color: "rgba(9,60,93,0.3)",
-            letterSpacing: "0.12em",
-          }}
-        >
-          CBCC · Cagayan Valley · "Loving God. Loving People. Making Disciples."
-        </div>
       </div>
     </>
   );

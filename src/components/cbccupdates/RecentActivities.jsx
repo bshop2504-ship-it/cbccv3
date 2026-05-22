@@ -71,43 +71,65 @@ export default function RecentActivities() {
   };
 
   const resetTimers = () => {
+    if (!activities.length) return;
+
     clearInterval(intervalRef.current);
     clearInterval(progressRef.current);
 
     const start = Date.now();
+
     progressRef.current = setInterval(() => {
       const pct = Math.min((Date.now() - start) / DURATION, 1);
+
       setProgress(pct);
+
       if (pct >= 1) clearInterval(progressRef.current);
     }, 50);
 
     intervalRef.current = setInterval(() => {
-      setPrevActive((a) => a);
       setActive((a) => {
         setPrevActive(a);
         return (a + 1) % activities.length;
       });
+
       setProgress(0);
+
       const s2 = Date.now();
+
       clearInterval(progressRef.current);
+
       progressRef.current = setInterval(() => {
         const pct = Math.min((Date.now() - s2) / DURATION, 1);
+
         setProgress(pct);
+
         if (pct >= 1) clearInterval(progressRef.current);
       }, 50);
     }, DURATION);
   };
 
   useEffect(() => {
+    if (!activities.length) return;
+
     resetTimers();
+
     return () => {
       clearInterval(intervalRef.current);
       clearInterval(progressRef.current);
     };
-  }, []);
+  }, [activities.length]);
 
-  const prev = () => goTo((active - 1 + activities.length) % activities.length);
-  const next = () => goTo((active + 1) % activities.length);
+  const prev = () => {
+    if (!activities.length) return;
+
+    goTo((active - 1 + activities.length) % activities.length);
+  };
+
+  const next = () => {
+    if (!activities.length) return;
+
+    goTo((active + 1) % activities.length);
+  };
 
   const current = activities[active] || {};
   if (!activities.length) return null;
@@ -202,9 +224,11 @@ export default function RecentActivities() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             >
-              <span className="ra-category">{current.subtitle}</span>
+              <span className="ra-category">
+                {current.subtitle} | {current.date}
+              </span>
               <div className="ra-title">{current.title}</div>
-              <div className="ra-date">{current.date}</div>
+              <div className="ra-date">{current.description}</div>
             </motion.div>
           </AnimatePresence>
 
