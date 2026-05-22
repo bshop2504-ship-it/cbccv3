@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { EyeIcon, EyeOffIcon } from "../assets/svg/Icons";
 import { supabase } from "../lib/supabaseClient";
+import { useNavigate } from "react-router-dom";
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [focused, setFocused] = useState(false);
   const [status, setStatus] = useState("idle");
   const [touched, setTouched] = useState(false);
+  const navigate = useNavigate();
   const inputRef = useRef();
 
   // Password strength
@@ -340,7 +342,7 @@ export default function ResetPassword() {
                 <span className="divider-text">CBCC</span>
                 <div className="divider-line" />
               </div>
-              <a href="#" className="back-btn">
+              <a href="/" className="back-btn">
                 ← Back to Sign In
               </a>
             </div>
@@ -486,7 +488,7 @@ export default function ResetPassword() {
                     </>
                   ) : (
                     <>
-                      {canSubmit && <span>🔐</span>}
+                      {canSubmit && <span></span>}
                       Reset Password
                     </>
                   )}
@@ -500,13 +502,13 @@ export default function ResetPassword() {
                 <div className="divider-line" />
               </div>
               <div style={{ textAlign: "center" }}>
-                <a
-                  href="/"
+                <button
+                  onClick={() => navigate("/")}
                   className="back-btn"
                   style={{ display: "inline-flex" }}
                 >
                   ← Back to Sign In
-                </a>
+                </button>
               </div>
             </>
           )}

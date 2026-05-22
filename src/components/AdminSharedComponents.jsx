@@ -357,6 +357,219 @@ export function ImagePicker({
   );
 }
 
+export function FilePicker({ value, onChange, label = "File", height = 160 }) {
+  const [tab, setTab] = useState("device");
+  const [dragging, setDragging] = useState(false);
+  const fileRef = useRef(null);
+
+  const isFile = value instanceof File;
+  const isImage = isFile
+    ? value.type?.startsWith("image/")
+    : typeof value === "string";
+
+  const preview = isFile
+    ? isImage
+      ? URL.createObjectURL(value)
+      : null
+    : value;
+
+  const applyFile = (file) => {
+    if (!file) return;
+    onChange(file);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragging(false);
+    applyFile(e.dataTransfer.files[0]);
+  };
+
+  const clear = () => {
+    onChange("");
+  };
+
+  const tabBtn = (id) => ({
+    padding: "6px 14px",
+    borderRadius: 8,
+    border: "none",
+    cursor: "pointer",
+    fontSize: 12,
+    fontFamily: "DM Sans, sans-serif",
+    fontWeight: 500,
+    background: tab === id ? "#093C5D" : "transparent",
+    color: tab === id ? "#6FD1D7" : "rgba(9,60,93,0.45)",
+  });
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {/* HEADER */}
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <label
+          style={{
+            fontSize: 11,
+            fontFamily: "DM Mono, monospace",
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            color: "rgba(9,60,93,0.55)",
+          }}
+        >
+          {label}
+        </label>
+
+        <div style={{ display: "flex", gap: 4 }}>
+          <button style={tabBtn("device")} onClick={() => setTab("device")}>
+            Device
+          </button>
+        </div>
+      </div>
+
+      {/* PREVIEW */}
+      {value && (
+        <div
+          style={{
+            position: "relative",
+            height,
+            borderRadius: 12,
+            overflow: "hidden",
+            border: "1px solid rgba(9,60,93,0.1)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#f5f7fa",
+          }}
+        >
+          {/* IMAGE FILE */}
+          {isImage && preview && (
+            <img
+              src={preview}
+              alt="preview"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+              }}
+            />
+          )}
+
+          {/* NON-IMAGE FILE */}
+          {!isImage && (
+            <div
+              style={{
+                textAlign: "center",
+                color: "rgba(9,60,93,0.6)",
+                fontFamily: "DM Mono, monospace",
+                fontSize: 12,
+              }}
+            >
+              FILE SELECTED
+              <br />
+              <span style={{ fontSize: 10 }}>
+                {isFile ? value.name : "URL FILE"}
+              </span>
+            </div>
+          )}
+
+          {/* REMOVE */}
+          <button
+            onClick={clear}
+            style={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              width: 28,
+              height: 28,
+              borderRadius: 8,
+              background: "rgba(229,62,62,0.9)",
+              border: "none",
+              color: "#fff",
+              cursor: "pointer",
+            }}
+          >
+            ×
+          </button>
+
+          {/* LABEL */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: 8,
+              left: 8,
+              background: "rgba(9,60,93,0.7)",
+              borderRadius: 6,
+              padding: "2px 8px",
+            }}
+          >
+            <span
+              style={{
+                fontSize: 9,
+                fontFamily: "DM Mono, monospace",
+                color: "#6FD1D7",
+              }}
+            >
+              {isFile ? "FROM DEVICE" : "FROM URL"}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* UPLOAD AREA */}
+      {tab === "device" && !value && (
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={handleDrop}
+          onClick={() => fileRef.current?.click()}
+          style={{
+            height,
+            borderRadius: 12,
+            cursor: "pointer",
+            border: `2px dashed ${dragging ? "#6FD1D7" : "rgba(9,60,93,0.2)"}`,
+            background: dragging
+              ? "rgba(111,209,215,0.06)"
+              : "rgba(9,60,93,0.02)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div style={{ fontSize: 24 }}></div>
+
+          <p
+            style={{
+              fontSize: 13,
+              color: "#093C5D",
+              fontWeight: 500,
+            }}
+          >
+            {dragging ? "Drop file here" : "Click or drag to upload"}
+          </p>
+
+          <p
+            style={{
+              fontSize: 11,
+              fontFamily: "DM Mono, monospace",
+              color: "rgba(9,60,93,0.4)",
+            }}
+          >
+            ALL FILE TYPES SUPPORTED
+          </p>
+
+          <input
+            ref={fileRef}
+            type="file"
+            accept="*/*"
+            style={{ display: "none" }}
+            onChange={(e) => applyFile(e.target.files[0])}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 // ─── Shared: Modal Shell ───────────────────────────────────────────
 export function Modal({ isOpen, onClose, title, icon, children, width = 540 }) {
   useEffect(() => {

@@ -6,6 +6,7 @@ import DevotionPanel from "../components/admin/DevotionPanel.jsx";
 import LivePanel from "../components/admin/LivePanel.jsx";
 import ServicePanel from "../components/admin/ServicePanel.jsx";
 import AnnouncementPanel from "../components/admin/AnnouncementPanel.jsx";
+import WeeklyDevotionPanel from "../components/admin/WeeklyDevotionPanel.jsx";
 import { Icon } from "../assets/svg/Icon.jsx";
 
 import LogoutModal from "../components/LogoutModal.jsx";
@@ -43,6 +44,7 @@ export default function CBCCAdminPanel() {
   const [live, setLive] = useState([]);
   const [activities, setActivities] = useState([]);
   const [admins, setAdmins] = useState([]);
+  const [weeklyDevotion, setWeeklyDevotion] = useState([]);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const isSuperAdmin = currentUser?.role === "Super Admin";
@@ -53,6 +55,12 @@ export default function CBCCAdminPanel() {
       label: "Daily Devotion",
       icon: <Icon.Book />,
       color: "#6FD1D7",
+    },
+    {
+      id: "weeklydevotion",
+      label: "Weekly Devotion",
+      icon: <Icon.File />,
+      color: "#093C5D",
     },
     {
       id: "services",
@@ -443,6 +451,12 @@ export default function CBCCAdminPanel() {
                 )}
                 {activePanel === "activities" && (
                   <ActivitiesPanel data={activities} setData={setActivities} />
+                )}
+                {activePanel === "weeklydevotion" && (
+                  <WeeklyDevotionPanel
+                    data={weeklyDevotion}
+                    setData={setWeeklyDevotion}
+                  />
                 )}
                 {activePanel === "admins" && isSuperAdmin && (
                   <AdminPanel data={admins} setData={setAdmins} />
