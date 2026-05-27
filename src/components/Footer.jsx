@@ -114,7 +114,7 @@ export default function Footer() {
             © {new Date().getFullYear()} CBCC. All rights reserved.
           </p>
           <p className="text-white/20 text-xs font-mono tracking-wider">
-            "Building Disciples. Transforming Nations."
+            Developed and Donated by Jeremiah Laman
           </p>
         </div>
       </div>
