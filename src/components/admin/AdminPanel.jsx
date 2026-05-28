@@ -17,6 +17,7 @@ import {
   Select,
   Modal,
   ConfirmDelete,
+  btnStyles,
 } from "../AdminSharedComponents";
 
 import {
@@ -287,12 +288,15 @@ export default function AdminPanel({ data, setData }) {
                 </td>
 
                 <td style={tableStyles.td}>
-                  <button onClick={() => openEdit(item)}>
+                  <button
+                    onClick={() => openEdit(item)}
+                    style={btnStyles.iconBtn}
+                  >
                     <Icon.Edit />
                   </button>
-
                   <button
                     disabled={!isReady}
+                    style={btnStyles.danger}
                     onClick={() => setDeleteTarget(item)}
                   >
                     <Icon.Trash />
