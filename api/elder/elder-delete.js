@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { requireRole, ELDER_ROLES, SUPER_ADMIN } from "../_lib/auth.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -16,31 +17,13 @@ export default async function handler(req, res) {
     // ─────────────────────────────────────
     // AUTH
     // ─────────────────────────────────────
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader?.startsWith("Bearer ")) {
-      return res.status(401).json({
-        error: "Missing auth token",
-      });
-    }
-
-    const token = authHeader.split(" ")[1];
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser(token);
-
-    if (authError || !user) {
-      return res.status(401).json({
-        error: "Invalid user",
-      });
-    }
+    const auth = await requireRole(req, res, ELDER_ROLES);
+    if (!auth) return;
 
     // ─────────────────────────────────────
     // GET FILE ID
     // ─────────────────────────────────────
-    const { id } = req.body;
+    const { id } = req.body ?? {};
 
     if (!id) {
       return res.status(400).json({
@@ -60,6 +43,15 @@ export default async function handler(req, res) {
     if (fetchError || !fileRow) {
       return res.status(404).json({
         error: "File not found",
+      });
+    }
+
+    if (
+      fileRow.user_id !== auth.dbUser.id &&
+      auth.dbUser.role !== SUPER_ADMIN
+    ) {
+      return res.status(403).json({
+        error: "You can only delete your own files",
       });
     }
 

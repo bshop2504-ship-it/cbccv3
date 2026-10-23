@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { requireRole, ELDER_ROLES } from "../_lib/auth.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -13,46 +14,17 @@ export default async function handler(req, res) {
   }
 
   try {
-    // AUTH
-    const authHeader = req.headers.authorization;
+    // AUTH (Elders + Super Admin only)
+    const auth = await requireRole(req, res, ELDER_ROLES);
+    if (!auth) return;
 
-    if (!authHeader) {
-      return res.status(401).json({
-        error: "No auth header",
-      });
-    }
-
-    const token = authHeader.replace("Bearer ", "");
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser(token);
-
-    if (authError || !user) {
-      return res.status(401).json({
-        error: "Invalid user",
-      });
-    }
-
-    // GET CURRENT USER
-    const { data: currentUser, error: userError } = await supabase
-      .from("userTB")
-      .select("*")
-      .eq("auth_id", user.id)
-      .single();
-
-    if (userError || !currentUser) {
-      return res.status(400).json({
-        error: "User not found",
-      });
-    }
+    const currentUser = auth.dbUser;
 
     // OPTIONAL QUERY
     // ?mode=all
-    // ?mode=mine
+    // ?mode=mine (default; any other value is treated as mine)
 
-    const mode = req.query.mode || "mine";
+    const mode = req.query.mode === "all" ? "all" : "mine";
 
     let query = supabase
       .from("elder-storage_tb")

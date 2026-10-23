@@ -174,9 +174,6 @@ export default function ElderFiles({ data, setData }) {
           title: form.title,
           description: form.description,
 
-          // OLD FILE PATH
-          old_file_path: editing.file_path,
-
           // NEW FILE
           file: base64File,
           file_name: form.file?.name,

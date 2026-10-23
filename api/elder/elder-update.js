@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { requireRole, ELDER_ROLES, SUPER_ADMIN } from "../_lib/auth.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -11,35 +12,52 @@ export default async function handler(req, res) {
   }
 
   try {
+    const auth = await requireRole(req, res, ELDER_ROLES);
+    if (!auth) return;
+
     const {
       id,
       title,
       description,
 
-      old_file_path,
-
       file,
       file_name,
       file_size,
       mime_type,
-    } = req.body;
+    } = req.body ?? {};
 
     if (!id) {
       return res.status(400).json({ error: "Missing file id" });
+    }
+
+    // ─────────────────────────────
+    // LOAD EXISTING ROW + CHECK OWNER
+    // (old file path comes from the DB, never from the client)
+    // ─────────────────────────────
+    const { data: existing, error: fetchError } = await supabase
+      .from("elder-storage_tb")
+      .select("user_id, file_path")
+      .eq("id", id)
+      .single();
+
+    if (fetchError || !existing) {
+      return res.status(404).json({ error: "File not found" });
+    }
+
+    if (
+      existing.user_id !== auth.dbUser.id &&
+      auth.dbUser.role !== SUPER_ADMIN
+    ) {
+      return res.status(403).json({ error: "You can only edit your own files" });
     }
 
     let uploadedFileUrl = null;
     let uploadedFilePath = null;
 
     // ─────────────────────────────
-    // REPLACE FILE IF EXISTS
+    // UPLOAD REPLACEMENT FILE IF PROVIDED
     // ─────────────────────────────
     if (file) {
-      // DELETE OLD FILE
-      if (old_file_path) {
-        await supabase.storage.from("cbcc-bucket").remove([old_file_path]);
-      }
-
       const uniqueName = `${Date.now()}-${file_name}`;
       const filePath = `elder-files/${uniqueName}`;
 
@@ -88,6 +106,19 @@ export default async function handler(req, res) {
 
     if (error) {
       throw error;
+    }
+
+    // ─────────────────────────────
+    // DELETE OLD FILE (only after the row points at the new one)
+    // ─────────────────────────────
+    if (uploadedFilePath && existing.file_path) {
+      const { error: removeError } = await supabase.storage
+        .from("cbcc-bucket")
+        .remove([existing.file_path]);
+
+      if (removeError) {
+        console.error("Old file delete error:", removeError.message);
+      }
     }
 
     return res.status(200).json({

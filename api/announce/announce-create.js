@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { requireRole, CONTENT_EDITORS } from "../_lib/auth.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -14,7 +15,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { title, description } = req.body;
+    const auth = await requireRole(req, res, CONTENT_EDITORS);
+    if (!auth) return;
+
+    const { title, description } = req.body ?? {};
 
     // Validation
     if (!title || title.trim() === "") {

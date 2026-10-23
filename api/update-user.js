@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { requireRole, USER_ADMINS, SUPER_ADMIN } from "./_lib/auth.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -11,6 +12,9 @@ export default async function handler(req, res) {
   }
 
   try {
+    const auth = await requireRole(req, res, USER_ADMINS);
+    if (!auth) return;
+
     const { auth_id, name, role } = req.body ?? {};
 
     if (!auth_id) {
@@ -21,6 +25,36 @@ export default async function handler(req, res) {
       return res.status(400).json({
         error: "Nothing to update (name or role required)",
       });
+    }
+
+    //  Don't allow removing the last Super Admin (would lock everyone out)
+    if (role !== undefined && role !== SUPER_ADMIN) {
+      const { data: target, error: targetError } = await supabase
+        .from("userTB")
+        .select("role")
+        .eq("auth_id", auth_id)
+        .single();
+
+      if (targetError || !target) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (target.role === SUPER_ADMIN) {
+        const { count, error: countError } = await supabase
+          .from("userTB")
+          .select("auth_id", { count: "exact", head: true })
+          .eq("role", SUPER_ADMIN);
+
+        if (countError) {
+          return res.status(400).json({ error: countError.message });
+        }
+
+        if (count <= 1) {
+          return res.status(400).json({
+            error: "Cannot change the role of the last Super Admin",
+          });
+        }
+      }
     }
 
     const { data, error } = await supabase

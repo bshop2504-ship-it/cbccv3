@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { requireRole, USER_ADMINS } from "./_lib/auth.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -11,26 +12,19 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { auth_id, requester_auth_id } = req.body ?? {};
+    //  1. Check requester role (from the token, not the body)
+    const auth = await requireRole(req, res, USER_ADMINS);
+    if (!auth) return;
 
-    if (!auth_id || !requester_auth_id) {
+    const { auth_id } = req.body ?? {};
+
+    if (!auth_id) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    //  1. Check requester role
-    const { data: requester, error: requesterError } = await supabase
-      .from("userTB")
-      .select("role")
-      .eq("auth_id", requester_auth_id)
-      .single();
-
-    if (requesterError || !requester) {
-      return res.status(403).json({ error: "Unauthorized" });
-    }
-
-    if (requester.role !== "Super Admin") {
-      return res.status(403).json({
-        error: "Only Super Admin can delete users",
+    if (auth_id === auth.authUser.id) {
+      return res.status(400).json({
+        error: "You cannot delete your own account",
       });
     }
 

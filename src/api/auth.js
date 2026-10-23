@@ -1,5 +1,17 @@
 import { supabase } from "../lib/supabaseClient";
 
+const getAuthHeader = async () => {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    throw new Error("Not authenticated");
+  }
+
+  return { Authorization: `Bearer ${session.access_token}` };
+};
+
 export const loginAccount = async (email, password) => {
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
@@ -70,6 +82,7 @@ export const updateUser = async (auth_id, name, role) => {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
+        ...(await getAuthHeader()),
       },
       body: JSON.stringify({ auth_id, name, role }),
     });
@@ -93,16 +106,14 @@ export const updateUser = async (auth_id, name, role) => {
     return { success: false, error: err.message };
   }
 };
-export const deleteUser = async (auth_id, requester_auth_id) => {
+export const deleteUser = async (auth_id) => {
   const res = await fetch("/api/delete-user", {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
+      ...(await getAuthHeader()),
     },
-    body: JSON.stringify({
-      auth_id,
-      requester_auth_id,
-    }),
+    body: JSON.stringify({ auth_id }),
   });
 
   const text = await res.text();
@@ -122,7 +133,9 @@ export const deleteUser = async (auth_id, requester_auth_id) => {
 };
 export const fetchUsers = async () => {
   try {
-    const res = await fetch("/api/users");
+    const res = await fetch("/api/users", {
+      headers: await getAuthHeader(),
+    });
 
     const text = await res.text();
 

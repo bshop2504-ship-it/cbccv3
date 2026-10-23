@@ -175,7 +175,7 @@ export default function AdminPanel({ data, setData }) {
         throw new Error("User not loaded");
       }
 
-      const result = await deleteUser(item.auth_id, currentUser.auth_id);
+      const result = await deleteUser(item.auth_id);
 
       if (!result.success) throw new Error(result.error);
 

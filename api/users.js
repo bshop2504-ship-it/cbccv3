@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { requireRole, USER_ADMINS } from "./_lib/auth.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -9,9 +10,12 @@ export default async function handler(req, res) {
   // GET ALL USERS
   if (req.method === "GET") {
     try {
+      const auth = await requireRole(req, res, USER_ADMINS);
+      if (!auth) return;
+
       const { data, error } = await supabase
         .from("userTB")
-        .select("*")
+        .select("id, auth_id, name, email, role, created_at")
         .order("created_at", { ascending: false });
 
       if (error) {

@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import formidable from "formidable";
 import fs from "fs";
+import { requireRole, ELDER_ROLES } from "../_lib/auth.js";
 
 export const config = {
   api: {
@@ -22,32 +23,10 @@ export default async function handler(req, res) {
     // ─────────────────────────────
     // AUTH
     // ─────────────────────────────
-    const authHeader = req.headers.authorization;
+    const auth = await requireRole(req, res, ELDER_ROLES);
+    if (!auth) return;
 
-    if (!authHeader?.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Missing auth token" });
-    }
-
-    const token = authHeader.split(" ")[1];
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser(token);
-
-    if (authError || !user) {
-      return res.status(401).json({ error: "Invalid user" });
-    }
-
-    const { data: currentUser } = await supabase
-      .from("userTB")
-      .select("*")
-      .eq("auth_id", user.id)
-      .single();
-
-    if (!currentUser) {
-      return res.status(400).json({ error: "User not found" });
-    }
+    const currentUser = auth.dbUser;
 
     // ─────────────────────────────
     // FORM PARSE
