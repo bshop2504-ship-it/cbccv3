@@ -1,6 +1,29 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Icon } from "../assets/svg/Icon.jsx";
+import { colors, ink } from "../lib/theme";
+
+// ─── Shared: Spinner ────────────────────────────────────────────────
+export function Spinner({ size = 14, color = "currentColor" }) {
+  return (
+    <motion.span
+      aria-hidden="true"
+      animate={{ rotate: 360 }}
+      transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
+      style={{
+        display: "inline-block",
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        border: `2px solid ${color}`,
+        borderTopColor: "transparent",
+        opacity: 0.85,
+        flexShrink: 0,
+      }}
+    />
+  );
+}
+
 // ─── Shared: Field input ────────────────────────────────────────────
 export function Field({ label, required, error, children }) {
   return (
@@ -703,40 +726,57 @@ export function Modal({ isOpen, onClose, title, icon, children, width = 540 }) {
 }
 
 // ─── Shared: Confirm Delete Dialog ────────────────────────────────
-export function ConfirmDelete({ isOpen, onClose, onConfirm, itemName }) {
+export function ConfirmDelete({
+  isOpen,
+  onClose,
+  onConfirm,
+  itemName,
+  loading = false,
+}) {
+  // Don't let the dialog close while the delete is still running
+  const close = loading ? () => {} : onClose;
+
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={close}
       title="Confirm Delete"
       icon={<Icon.Trash />}
       width={400}
     >
       <p
         style={{
-          color: "#3B7597",
+          color: colors.steel,
           fontSize: 14,
           lineHeight: 1.6,
           marginBottom: 24,
         }}
       >
         Are you sure you want to delete{" "}
-        <strong style={{ color: "#093C5D" }}>"{itemName}"</strong>? This action
-        cannot be undone.
+        <strong style={{ color: colors.navy }}>"{itemName}"</strong>? This
+        action cannot be undone.
       </p>
       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-        <button onClick={onClose} style={btnStyles.ghost}>
+        <button
+          onClick={close}
+          disabled={loading}
+          style={{ ...btnStyles.ghost, ...(loading && btnStyles.disabled) }}
+        >
           Cancel
         </button>
         <button
           onClick={onConfirm}
+          disabled={loading}
           style={{
             ...btnStyles.primary,
-            background: "#E53E3E",
+            background: colors.danger,
+            color: colors.white,
             boxShadow: "0 4px 12px rgba(229,62,62,0.25)",
+            ...(loading && btnStyles.disabled),
           }}
         >
-          Delete
+          {loading ? <Spinner /> : <Icon.Trash />}
+          {loading ? "Deleting…" : "Delete"}
         </button>
       </div>
     </Modal>
@@ -801,5 +841,42 @@ export const btnStyles = {
     color: "#E53E3E",
     cursor: "pointer",
     transition: "all 0.2s",
+  },
+  // Icon buttons that sit on top of an image/preview (media cards)
+  overlay: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    border: "none",
+    background: "rgba(255,255,255,0.92)",
+    backdropFilter: "blur(8px)",
+    color: colors.steel,
+    cursor: "pointer",
+    boxShadow: `0 2px 10px ${ink(0.12)}`,
+    transition: "all 0.2s",
+  },
+  overlayDanger: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    border: "none",
+    background: "rgba(255,255,255,0.92)",
+    backdropFilter: "blur(8px)",
+    color: colors.danger,
+    cursor: "pointer",
+    boxShadow: `0 2px 10px ${ink(0.12)}`,
+    transition: "all 0.2s",
+  },
+  // Spread after any button style while it's busy/disabled
+  disabled: {
+    opacity: 0.6,
+    cursor: "not-allowed",
+    boxShadow: "none",
   },
 };

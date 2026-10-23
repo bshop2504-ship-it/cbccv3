@@ -3,9 +3,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { XIcon, CrossIcon } from "../assets/svg/Icons.jsx";
 import { supabase } from "../lib/supabaseClient.js";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "../hooks/useToast";
 
 export default function SuperAdminModal({ isOpen, onClose }) {
   const navigate = useNavigate();
+  const toast = useToast();
   const [loading, setLoading] = useState(false);
 
   const handleGotoAdminPanel = async () => {
@@ -37,9 +39,9 @@ export default function SuperAdminModal({ isOpen, onClose }) {
     try {
       onClose?.();
       await supabase.auth.signOut();
-      console.log("success logout");
+      toast.info("You've been logged out");
     } catch (err) {
-      console.error("Redirect error:", err);
+      toast.error(err, "Couldn't log out. Please try again.");
     } finally {
       setLoading(false);
     }

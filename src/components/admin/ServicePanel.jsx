@@ -1,11 +1,10 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Icon } from "../../assets/svg/Icon";
 import {
   Field,
   Input,
   Select,
-  ImagePicker,
   Modal,
   ConfirmDelete,
   btnStyles,
@@ -14,10 +13,13 @@ import {
   SectionHeader,
   ModalFooter,
   EmptyState,
+  LoadingState,
   tagStyle,
   tableStyles,
   formGrid,
 } from "../AdminSharedSubComponents";
+import { useToast } from "../../hooks/useToast";
+import { colors } from "../../lib/theme";
 import { createWeekService } from "../../api/weeklyservice/create";
 import { fetchWeekServices } from "../../api/weeklyservice/read";
 import { updateWeekService } from "../../api/weeklyservice/update";
@@ -35,6 +37,10 @@ const CATEGORIES = [
 ];
 // ─── PANEL: Weekly Service ─────────────────────────────────────────
 export default function ServicePanel({ data, setData }) {
+  const toast = useToast();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const empty = {
@@ -81,12 +87,14 @@ export default function ServicePanel({ data, setData }) {
       return;
     }
 
+    setSaving(true);
+
     try {
       if (editing) {
         const result = await updateWeekService(editing.id, form);
 
         if (!result.success) {
-          console.error("Update failed:", result.error);
+          toast.error(result.error, "Couldn't update the service");
           return;
         }
 
@@ -98,13 +106,14 @@ export default function ServicePanel({ data, setData }) {
         const result = await createWeekService(form);
 
         if (!result.success) {
-          console.error("Insert failed:", result.error);
+          toast.error(result.error, "Couldn't add the service");
           return;
         }
 
         setData((d) => [...d, result.data[0]]);
       }
 
+      toast.success(editing ? "Service updated" : "Service added");
       setModalOpen(false);
       setEditing(null);
 
@@ -118,7 +127,9 @@ export default function ServicePanel({ data, setData }) {
         category: "",
       });
     } catch (err) {
-      console.error("SAVE ERROR:", err);
+      toast.error(err, "Couldn't save the service");
+    } finally {
+      setSaving(false);
     }
   };
   useEffect(() => {
@@ -128,37 +139,44 @@ export default function ServicePanel({ data, setData }) {
       if (result.success) {
         setData(result.data);
       } else {
-        console.error(result.error);
+        toast.error(result.error, "Couldn't load weekly services");
       }
+
+      setLoading(false);
     };
 
     loadServices();
   }, []);
   const remove = async (id) => {
+    setDeleting(true);
+
     try {
       const result = await deleteWeekService(id);
 
       if (!result.success) {
-        console.error("Delete failed:", result.error);
+        toast.error(result.error, "Couldn't delete the service");
         return;
       }
 
       // update UI after DB delete
       setData((d) => d.filter((x) => x.id !== id));
 
+      toast.success("Service deleted");
       setDeleteTarget(null);
     } catch (err) {
-      console.error("DELETE ERROR:", err);
+      toast.error(err, "Couldn't delete the service");
+    } finally {
+      setDeleting(false);
     }
   };
 
   const catColors = {
-    Worship: "#6FD1D7",
-    Youth: "#093C5D",
-    Prayer: "#3B7597",
-    Men: "#093C5D",
-    Women: "#6FD1D7",
-    Outreach: "#3B7597",
+    Worship: colors.aqua,
+    Youth: colors.navy,
+    Prayer: colors.steel,
+    Men: colors.navy,
+    Women: colors.aqua,
+    Outreach: colors.steel,
   };
 
   return (
@@ -243,22 +261,18 @@ export default function ServicePanel({ data, setData }) {
                   </span>
                 </td>
                 <td style={{ ...tableStyles.td, textAlign: "right" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 6,
-                      justifyContent: "flex-end",
-                    }}
-                  >
+                  <div style={tableStyles.actions}>
                     <button
                       style={btnStyles.iconBtn}
                       onClick={() => openEdit(item)}
+                      title="Edit"
                     >
                       <Icon.Edit />
                     </button>
                     <button
                       style={btnStyles.danger}
                       onClick={() => setDeleteTarget(item)}
+                      title="Delete"
                     >
                       <Icon.Trash />
                     </button>
@@ -268,12 +282,16 @@ export default function ServicePanel({ data, setData }) {
             ))}
           </tbody>
         </table>
-        {data.length === 0 && <EmptyState label="No services yet" />}
+        {loading ? (
+          <LoadingState label="Loading services…" />
+        ) : (
+          data.length === 0 && <EmptyState label="No services yet" />
+        )}
       </div>
 
       <Modal
         isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => !saving && setModalOpen(false)}
         title={editing ? "Edit Weekly Service" : "Add Weekly Service"}
         icon={<Icon.Calendar />}
         width={600}
@@ -361,7 +379,11 @@ export default function ServicePanel({ data, setData }) {
             />
           </Field>
         </div>
-        <ModalFooter onClose={() => setModalOpen(false)} onSave={save} />
+        <ModalFooter
+          onClose={() => setModalOpen(false)}
+          onSave={save}
+          loading={saving}
+        />
       </Modal>
 
       <ConfirmDelete
@@ -369,6 +391,7 @@ export default function ServicePanel({ data, setData }) {
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => remove(deleteTarget?.id)}
         itemName={deleteTarget?.title}
+        loading={deleting}
       />
     </div>
   );

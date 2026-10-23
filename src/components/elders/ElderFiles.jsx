@@ -6,13 +6,23 @@ import { handleUpload } from "../../api/elder/upload";
 import { fetchElderFiles } from "../../api/elder/select";
 import { updateElderFile } from "../../api/elder/update";
 import { deleteElderFile } from "../../api/elder/delete";
-import { Field, Input, Modal, ConfirmDelete } from "../AdminSharedComponents";
+import {
+  Field,
+  Input,
+  Modal,
+  ConfirmDelete,
+  btnStyles,
+} from "../AdminSharedComponents";
 
 import {
   SectionHeader,
+  ModalFooter,
   EmptyState,
+  LoadingState,
   formGrid,
 } from "../AdminSharedSubComponents";
+import { useToast } from "../../hooks/useToast";
+import { colors, ink, fonts, fileTypeColor } from "../../lib/theme";
 
 // ─────────────────────────────────────────────────────────────
 // HELPERS
@@ -46,21 +56,28 @@ const formatBytes = (bytes) => {
   return `${(kb / 1024).toFixed(1)} MB`;
 };
 
-const getTypeColor = (type) => {
-  switch (type) {
-    case "image":
-      return "#38B2AC";
-    case "video":
-      return "#805AD5";
-    default:
-      return "#4A5568";
-  }
-};
+const getTypeColor = (type) => fileTypeColor[type] ?? fileTypeColor.file;
+
+// All / Mine filter — same look as the ImagePicker tabs
+const filterTab = (active, disabled) => ({
+  padding: "7px 16px",
+  borderRadius: 8,
+  border: "none",
+  cursor: disabled ? "not-allowed" : "pointer",
+  fontSize: 12,
+  fontFamily: fonts.sans,
+  fontWeight: 600,
+  background: active ? colors.navy : "transparent",
+  color: active ? colors.aqua : ink(0.5),
+  opacity: disabled && !active ? 0.6 : 1,
+  transition: "all 0.2s",
+});
 
 // ─────────────────────────────────────────────────────────────
 // COMPONENT
 // ─────────────────────────────────────────────────────────────
 export default function ElderFiles({ data, setData }) {
+  const toast = useToast();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -68,7 +85,7 @@ export default function ElderFiles({ data, setData }) {
   const [errors, setErrors] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [filter, setFilter] = useState("all");
-  const [loadingFiles, setLoadingFiles] = useState(false);
+  const [loadingFiles, setLoadingFiles] = useState(true);
   const [deletingFiles, setDeletingFiles] = useState(false);
   // ───────────────────────────────────────────────────────────
   // OPEN ADD
@@ -129,10 +146,6 @@ export default function ElderFiles({ data, setData }) {
     }
 
     return e;
-  };
-  const refreshData = async () => {
-    const files = await fetchElderFiles();
-    setData(files);
   };
   // ───────────────────────────────────────────────────────────
   // SAVE
@@ -219,9 +232,10 @@ export default function ElderFiles({ data, setData }) {
       setForm(empty);
 
       await refreshData();
+
+      toast.success(editing ? "File updated" : "File uploaded");
     } catch (err) {
-      console.error(err);
-      alert(err.message || "Failed to save file");
+      toast.error(err, "Couldn't save the file");
     } finally {
       setUploading(false);
     }
@@ -235,10 +249,10 @@ export default function ElderFiles({ data, setData }) {
       await deleteElderFile({ id });
 
       setData((d) => d.filter((x) => x.id !== id));
+      toast.success("File deleted");
       setDeleteTarget(null);
     } catch (err) {
-      console.error(err);
-      alert(err.message || "Failed to delete file");
+      toast.error(err, "Couldn't delete the file");
     } finally {
       setDeletingFiles(false);
     }
@@ -267,6 +281,13 @@ export default function ElderFiles({ data, setData }) {
       uploadedBy: item.userTB?.name || item.userTB?.email || "Unknown User",
     }));
   };
+
+  // Reload after a save, keeping the current All/Mine filter and card format
+  const refreshData = async () => {
+    const files = await fetchElderFiles(filter === "all" ? "all" : "mine");
+    setData(formatFiles(files));
+  };
+
   useEffect(() => {
     let isMounted = true;
 
@@ -282,8 +303,7 @@ export default function ElderFiles({ data, setData }) {
         setData(formatFiles(result));
       } catch (err) {
         if (isMounted) {
-          console.error(err);
-          alert(err.message);
+          toast.error(err, "Couldn't load files");
         }
       } finally {
         if (isMounted) {
@@ -308,54 +328,53 @@ export default function ElderFiles({ data, setData }) {
         onAdd={openAdd}
         addLabel="Upload File"
       />
-      <div style={{ display: "flex", gap: 10, margin: "12px 0" }}>
+      <div
+        role="tablist"
+        style={{
+          display: "inline-flex",
+          gap: 2,
+          margin: "0 0 18px",
+          padding: 3,
+          borderRadius: 10,
+          background: ink(0.06),
+        }}
+      >
         <button
+          role="tab"
+          aria-selected={filter === "all"}
           onClick={() => setFilter("all")}
           disabled={loadingFiles}
-          style={{
-            padding: "8px 14px",
-            borderRadius: 10,
-            background: filter === "all" ? "#093C5D" : "#fff",
-            color: filter === "all" ? "#fff" : "#093C5D",
-            border: "1px solid #ccc",
-            cursor: loadingFiles ? "not-allowed" : "pointer",
-            opacity: loadingFiles ? 0.7 : 1,
-          }}
+          style={filterTab(filter === "all", loadingFiles)}
         >
-          {loadingFiles && filter === "all" ? "Loading..." : "All"}
+          All
         </button>
 
         <button
+          role="tab"
+          aria-selected={filter === "mine"}
           onClick={() => setFilter("mine")}
           disabled={loadingFiles}
-          style={{
-            padding: "8px 14px",
-            borderRadius: 10,
-            background: filter === "mine" ? "#093C5D" : "#fff",
-            color: filter === "mine" ? "#fff" : "#093C5D",
-            border: "1px solid #ccc",
-            cursor: loadingFiles ? "not-allowed" : "pointer",
-            opacity: loadingFiles ? 0.7 : 1,
-          }}
+          style={filterTab(filter === "mine", loadingFiles)}
         >
-          {loadingFiles && filter === "mine" ? "Loading..." : "Mine"}
+          Mine
         </button>
       </div>
+
+      {loadingFiles && <LoadingState label="Loading files…" />}
+
       {/* EMPTY */}
-      {!data.length && (
+      {!loadingFiles && !data.length && (
         <EmptyState
           icon={<Icon.Folder />}
-          title="No files uploaded"
+          title={filter === "mine" ? "You haven't uploaded any files" : "No files uploaded"}
           subtitle="Upload files, videos, or images for CBCC."
-          buttonLabel="Upload File"
-          onClick={openAdd}
         />
       )}
 
       {/* GRID */}
       <div
         style={{
-          display: "grid",
+          display: loadingFiles ? "none" : "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
           gap: 20,
           alignItems: "start",
@@ -385,7 +404,7 @@ export default function ElderFiles({ data, setData }) {
                 style={{
                   height: 230,
                   position: "relative",
-                  background: "#EDF2F7",
+                  background: ink(0.05),
                   overflow: "hidden",
                 }}
               >
@@ -478,7 +497,7 @@ export default function ElderFiles({ data, setData }) {
                           rel="noreferrer"
                           style={{
                             textDecoration: "none",
-                            color: "#38B2AC",
+                            color: colors.steel,
                             fontWeight: 600,
                             fontSize: 13,
                           }}
@@ -515,18 +534,8 @@ export default function ElderFiles({ data, setData }) {
                   >
                     <button
                       onClick={() => openEdit(item)}
-                      style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: 12,
-                        border: "none",
-                        background: "rgba(255,255,255,0.9)",
-                        backdropFilter: "blur(8px)",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
+                      style={btnStyles.overlay}
+                      title="Edit"
                     >
                       <Icon.Edit />
                     </button>
@@ -535,17 +544,10 @@ export default function ElderFiles({ data, setData }) {
                       onClick={() => setDeleteTarget(item)}
                       disabled={deletingFiles}
                       style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: 12,
-                        border: "none",
-                        background: "rgba(255,255,255,0.9)",
-                        cursor: deletingFiles ? "not-allowed" : "pointer",
-                        opacity: deletingFiles ? 0.5 : 1,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
+                        ...btnStyles.overlayDanger,
+                        ...(deletingFiles && btnStyles.disabled),
                       }}
+                      title="Delete"
                     >
                       <Icon.Trash />
                     </button>
@@ -705,8 +707,8 @@ export default function ElderFiles({ data, setData }) {
                         width: 42,
                         height: 42,
                         borderRadius: "50%",
-                        background: "linear-gradient(135deg,#093C5D,#38B2AC)",
-                        color: "#fff",
+                        background: `linear-gradient(135deg, ${colors.navy}, ${colors.steel})`,
+                        color: colors.aqua,
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -824,7 +826,7 @@ export default function ElderFiles({ data, setData }) {
       {/* MODAL */}
       <Modal
         isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => !uploading && setModalOpen(false)}
         title={editing ? "Edit File" : "Upload File"}
         icon={<Icon.Folder />}
         width={560}
@@ -941,44 +943,13 @@ export default function ElderFiles({ data, setData }) {
           </Field>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: 10,
-            marginTop: 24,
-          }}
-        >
-          <button
-            onClick={() => setModalOpen(false)}
-            style={{
-              padding: "10px 16px",
-              borderRadius: 12,
-              border: "1px solid #D1D5DB",
-              background: "#fff",
-              cursor: "pointer",
-            }}
-          >
-            Cancel
-          </button>
-
-          <button
-            onClick={save}
-            disabled={uploading}
-            style={{
-              padding: "10px 18px",
-              borderRadius: 12,
-              border: "none",
-              background: "#093C5D",
-              color: "#fff",
-              cursor: "pointer",
-              minWidth: 150,
-              fontWeight: 600,
-            }}
-          >
-            {uploading ? "Uploading..." : "Save File"}
-          </button>
-        </div>
+        <ModalFooter
+          onClose={() => setModalOpen(false)}
+          onSave={save}
+          saveLabel="Save File"
+          loading={uploading}
+          loadingLabel="Uploading…"
+        />
       </Modal>
 
       {/* DELETE */}
@@ -987,13 +958,8 @@ export default function ElderFiles({ data, setData }) {
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => remove(deleteTarget?.id)}
         itemName={deleteTarget?.title}
+        loading={deletingFiles}
       />
-
-      {deletingFiles && (
-        <p style={{ color: "#E53E3E", fontWeight: 600, marginTop: 10 }}>
-          Deleting file...
-        </p>
-      )}
     </div>
   );
 }

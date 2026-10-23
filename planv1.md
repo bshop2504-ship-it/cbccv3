@@ -50,6 +50,7 @@
 | E6 | Code quality | Clean lint, remove debug logging, consistent patterns |
 | E7 | Dev environment & docs | Anyone can clone, configure and run the full app |
 | E8 | Testing | Automated tests protect the security fixes from regressing |
+| E9 | UI consistency & feedback | Every admin/elder panel looks and behaves the same; users always see what happened (toasts) |
 
 ---
 
@@ -94,9 +95,17 @@ Priority: **M** = Must, **S** = Should, **C** = Could. Severity is from the scan
 | CBCC-33 | E7 | Document local setup (`vercel dev`, required env vars) | Low | S | 2 | 2 |
 | CBCC-34 | E7 | Align `.nvmrc` with supported Node version | Low | C | 1 | 4 |
 | CBCC-35 | E8 | Set up Vitest + API handler auth tests | Medium | S | 5 | 2 |
-| CBCC-36 | E4 | Elder files list breaks after saving (found in Sprint 1) | Medium | M | 1 | 3 |
+| CBCC-36 | E4 | Elder files list breaks after saving (found in Sprint 1) | Medium | M | 1 | 5 |
+| CBCC-37 | E9 | Site-wide toast notifications | Medium | M | 3 | 5 |
+| CBCC-38 | E9 | Replace `alert()` and silent failures with toasts; success toasts on save/delete | Medium | M | 3 | 5 |
+| CBCC-39 | E9 | Consistent saving/deleting states (no double submits) | Medium | M | 3 | 5 |
+| CBCC-40 | E9 | Consistent loading and empty states | Low | M | 2 | 5 |
+| CBCC-41 | E9 | Shared design tokens; remove off-palette colors | Low | S | 2 | 5 |
+| CBCC-42 | E9 | Unify media-card panels (Activities, Weekly Devotion, Elder Files) | Low | S | 3 | 5 |
+| CBCC-43 | E9 | Copy fixes (wrong modal titles and messages) | Low | M | 1 | 5 |
+| CBCC-44 | E2 | Third-party chatbot script runs on admin/elder pages (found in Sprint 5) | Medium | M | 2 | 2 |
 
-**Total: 80 points** across 4 sprints.
+**Total: 99 points** across 5 sprints.
 
 ---
 
@@ -107,20 +116,26 @@ Priority: **M** = Must, **S** = Should, **C** = Could. Severity is from the scan
 
 CBCC-01, 02, 03, 04, 05, 06, 07, 08, 32
 
-### Sprint 2 — "Defense in depth" (RLS, storage, deps, tests) · 27 pts
+### Sprint 2 — "Defense in depth" (RLS, storage, deps, tests) · 29 pts
 **Sprint goal:** Database and storage enforce roles even if someone bypasses the API; dependencies patched; auth fixes covered by tests.
 
-CBCC-09, 10, 11, 12, 13, 14, 25, 33, 35
+CBCC-09, 10, 11, 12, 13, 14, 25, 33, 35, 44
 
-### Sprint 3 — "Reliability" (Bugs) · 16 pts
+### Sprint 3 — "Reliability" (Bugs) · 15 pts
 **Sprint goal:** Uploads, user management and the livestream work reliably with correct error messages.
 
-CBCC-15, 16, 17, 18, 19, 20, 21, 22, 24, 36
+CBCC-15, 16, 17, 18, 19, 20, 21, 22, 24
 
 ### Sprint 4 — "Clean up" (Code quality & performance) · 19 pts
 **Sprint goal:** Lint is clean, bundle is split, upgrade path is planned.
 
 CBCC-23, 26, 27, 28, 29, 30, 31, 34
+
+### Sprint 5 — "One look, clear feedback" (UI consistency) · 18 pts
+**Sprint goal:** Every admin and elder panel uses the same building blocks and states, and every action tells the user whether it worked.
+*Pulled forward by the PO on 2026-10-23, ahead of Sprints 2–4. Sprint 2 (database security rules) is still the recommended next security sprint.*
+
+CBCC-36, 37, 38, 39, 40, 41, 42, 43
 
 ---
 
@@ -264,6 +279,16 @@ Files: `api/elder/elder-upload.js:52`, `api/elder/elder-update.js:61`, `src/api/
 
 ---
 
+#### CBCC-44 · Keep the third-party chatbot off admin/elder pages · 2 pts — `index.html:56`
+> As an admin, I don't want an outside script running on pages where I'm logged in.
+
+`https://www.tuqlas.com/chatbot.js` is loaded from `index.html`, so it runs on every page, including `/cbccadmin` and `/cbccelders`. The Supabase session is kept in `localStorage` (`src/lib/supabaseClient.js`), which any script on the page can read — if the vendor were compromised, admin sessions could be stolen.
+- [ ] Load the chatbot only on public routes (inject it from the public layout instead of `index.html`), or remove it
+- [ ] Confirm it no longer loads on `/cbccadmin`, `/cbccelders` or `/reset-password`
+- [ ] Consider a Content-Security-Policy header in `vercel.json` limiting script sources
+
+---
+
 ### E3 — Data integrity & reliability
 
 #### CBCC-15 · Fix response body double-read · 2 pts
@@ -309,12 +334,12 @@ Files: `src/api/announce/create.js`, `src/api/announce/read.js`, `src/api/elder/
 #### CBCC-24 · Default role mismatch · 1 pt — `api/register.js:20`
 - [ ] Default role matches a role the UI understands (per Q4), or remove the default and require one
 
-#### CBCC-36 · Elder files list breaks after saving · 1 pt — `src/components/elders/ElderFiles.jsx:133`
+#### CBCC-36 · Elder files list breaks after saving · 1 pt — `src/components/elders/ElderFiles.jsx:133` · ✅ code complete (Sprint 5)
 > As an elder, I want the file list to stay correct after I upload or edit a file.
 
 `refreshData()` reloads with the default `mode=mine` and skips `formatFiles()`, so after any save the list loses previews, file names and "uploaded by", and the **All** view shows only the user's own files.
-- [ ] `refreshData()` uses the current `filter` and passes results through `formatFiles()`
-- [ ] After upload/edit in **All** view, other elders' files are still listed with previews
+- [x] `refreshData()` uses the current `filter` and passes results through `formatFiles()`
+- [x] After upload/edit in **All** view, other elders' files are still listed with previews
 
 ---
 
@@ -364,7 +389,7 @@ Files: `Navbar.jsx:44`, `AnnouncementPanel.jsx:104`, `DevotionPanel.jsx:43`, `Li
 - [ ] *(optional)* Disable legacy JWT-based API keys in Supabase once no Vercel variable starts with `eyJ`
 
 #### CBCC-33 · Local setup docs · 2 pts — `README.md`
-- [ ] Explain `npm run dev` serves only the frontend; use `vercel dev` for API
+- [ ] Explain `npm run dev` serves only the frontend; use `npm run dev:full` (added in Sprint 5: `vercel dev` with `vercel.dev.json`, because the SPA rewrite in `vercel.json` breaks Vite's dev modules under plain `vercel dev`)
 - [ ] List required env vars: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `FRONTEND_URL`
 - [ ] Explain `vercel link` + `vercel env pull`
 
@@ -383,6 +408,50 @@ Files: `Navbar.jsx:44`, `AnnouncementPanel.jsx:104`, `DevotionPanel.jsx:43`, `Li
 
 ---
 
+### E9 — UI consistency & feedback
+
+> **Sprint 5 status (2026-10-23):** CBCC-36 to 43 code complete on `sprint-5/ui-consistency`; build passes; lint errors in touched files down from 32 to 19. Home page verified rendering with no console errors via `npm run dev:full`. Remaining before Done: PO tests the panels while logged in, then PR + deploy.
+
+#### CBCC-37 · Site-wide toast notifications · 3 pts
+> As a user, I want a short, non-blocking message after every action so I know whether it worked.
+
+- [x] `ToastProvider` wraps the app; `useToast()` exposes `success`, `error`, `info`
+- [x] Brand styling (navy text, aqua = success, red = error, steel = info), stacked top-right, full-width on phones
+- [x] Auto-dismiss (errors stay longer) with a close button; screen readers announce them (`aria-live`)
+- [x] Shows above modals
+
+#### CBCC-38 · Toasts instead of `alert()` and silent failures · 3 pts
+- [x] All 12 `alert()` calls replaced (Admin, Announcement, Weekly Devotion, Elder Files, Reset Password)
+- [x] Panels that only `console.error` on failure (Live, Service, Devotion, Activities) now show an error toast
+- [x] Success toast on every create, update and delete; on login and logout
+- [x] Forgot-password success no longer shown in the red error style
+
+#### CBCC-39 · Consistent saving/deleting states · 3 pts
+- [x] `ModalFooter` supports `loading` (spinner + "Saving…", buttons disabled) — `ActivitiesPanel` and `AdminPanel` already passed it but it was ignored
+- [x] `ConfirmDelete` supports `loading` ("Deleting…", can't close mid-delete)
+- [x] All 8 panels use both, so Save/Delete can't be double-clicked into duplicate requests
+
+#### CBCC-40 · Consistent loading and empty states · 2 pts
+- [x] Shared `LoadingState` shown while each panel loads
+- [x] `EmptyState` supports `title` / `subtitle` / `icon` — Weekly Devotion and Elder Files passed these but rendered a blank box
+- [x] Activities panel gets an empty state
+
+#### CBCC-41 · Shared design tokens · 2 pts
+- [x] `src/lib/theme.js` with brand colors and fonts for inline-styled components
+- [x] Off-palette colors in admin/elder panels (`#38B2AC`, `#805AD5`, `#4A5568`, `#D1D5DB`, `#c7d76f`…) replaced with brand tokens
+
+#### CBCC-42 · Unify media-card panels · 3 pts
+- [x] Card action buttons use shared `btnStyles.overlay` / `overlayDanger` in Activities, Weekly Devotion and Elder Files
+- [x] Weekly Devotion and Elder Files use `ModalFooter` instead of their own unstyled buttons
+- [x] Elder Files All/Mine filter matches the shared tab style
+- [x] Admin Users table action buttons spaced like every other table
+
+#### CBCC-43 · Copy fixes · 1 pt
+- [x] Announcement modal says "Add/Edit Announcement" (was "Add/Edit Devotion"); validation no longer says "Bible title"
+- [x] Debug `console.log` calls removed from the panels touched
+
+---
+
 ## 9. Risks
 
 | Risk | Impact | Mitigation |
@@ -398,7 +467,8 @@ Files: `Navbar.jsx:44`, `AnnouncementPanel.jsx:104`, `DevotionPanel.jsx:43`, `Li
 
 | Sprint | Planned pts | Done pts | Status |
 |---|---|---|---|
-| 1 | 18 | 0 | In review — 16 pts code complete on `sprint-1/api-auth`; CBCC-08 (2 pts) runs after deploy |
-| 2 | 27 | 0 | Not started |
-| 3 | 16 | 0 | Not started |
+| 1 | 18 | 16 | Deployed to production 2026-10-23 (PR #1). CBCC-08 audit run; waiting on PO to confirm Super Admin accounts |
+| 2 | 29 | 0 | Not started |
+| 3 | 15 | 0 | Not started |
 | 4 | 19 | 0 | Not started |
+| 5 | 18 | 0 | In progress on `sprint-5/ui-consistency` |

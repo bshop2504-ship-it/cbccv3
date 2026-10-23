@@ -7,13 +7,23 @@ import { fetchWeeklyDevotions } from "../../api/weeklydevotion/read";
 import { updateWeeklyDevotion } from "../../api/weeklydevotion/update";
 import { deleteWeeklyDevotion } from "../../api/weeklydevotion/delete";
 
-import { Field, Input, Modal, ConfirmDelete } from "../AdminSharedComponents";
+import {
+  Field,
+  Input,
+  Modal,
+  ConfirmDelete,
+  btnStyles,
+} from "../AdminSharedComponents";
 
 import {
   SectionHeader,
+  ModalFooter,
   EmptyState,
+  LoadingState,
   formGrid,
 } from "../AdminSharedSubComponents";
+import { useToast } from "../../hooks/useToast";
+import { colors, ink, fileTypeColor } from "../../lib/theme";
 
 // ─────────────────────────────────────────────────────────────
 // HELPERS
@@ -78,21 +88,14 @@ const formatBytes = (bytes) => {
   return `${(kb / 1024).toFixed(1)} MB`;
 };
 
-const getTypeColor = (type) => {
-  switch (type) {
-    case "image":
-      return "#38B2AC";
-    case "video":
-      return "#805AD5";
-    default:
-      return "#4A5568";
-  }
-};
+const getTypeColor = (type) => fileTypeColor[type] ?? fileTypeColor.file;
 
 // ─────────────────────────────────────────────────────────────
 // COMPONENT
 // ─────────────────────────────────────────────────────────────
 export default function WeeklyDevotionPanel({ data, setData }) {
+  const toast = useToast();
+  const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -205,8 +208,9 @@ export default function WeeklyDevotionPanel({ data, setData }) {
 
       setData(formatFiles(result.data));
     } catch (err) {
-      console.error(err);
-      alert(err.message || "Failed to load files");
+      toast.error(err, "Couldn't load weekly devotions");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -275,9 +279,10 @@ export default function WeeklyDevotionPanel({ data, setData }) {
       }));
 
       await refreshData();
+
+      toast.success(editing ? "Weekly devotion updated" : "Weekly devotion uploaded");
     } catch (err) {
-      console.error(err);
-      alert(err.message || "Failed to save file");
+      toast.error(err, "Couldn't save the file");
     } finally {
       setUploading(false);
     }
@@ -301,10 +306,10 @@ export default function WeeklyDevotionPanel({ data, setData }) {
 
       setData((prev) => prev.filter((x) => x.id !== item.id));
 
+      toast.success("Weekly devotion deleted");
       setDeleteTarget(null);
     } catch (err) {
-      console.error(err);
-      alert(err.message || "Failed to delete file");
+      toast.error(err, "Couldn't delete the file");
     } finally {
       setDeletingFiles(false);
     }
@@ -321,21 +326,21 @@ export default function WeeklyDevotionPanel({ data, setData }) {
         addLabel="Upload File"
       />
 
+      {loading && <LoadingState label="Loading weekly devotions…" />}
+
       {/* EMPTY */}
-      {!data.length && (
+      {!loading && !data.length && (
         <EmptyState
           icon={<Icon.Folder />}
           title="No files uploaded"
           subtitle="Upload files, videos, or images for CBCC."
-          buttonLabel="Upload File"
-          onClick={openAdd}
         />
       )}
 
       {/* GRID */}
       <div
         style={{
-          display: "grid",
+          display: loading ? "none" : "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
           gap: 20,
           alignItems: "start",
@@ -365,7 +370,7 @@ export default function WeeklyDevotionPanel({ data, setData }) {
                 style={{
                   height: 230,
                   position: "relative",
-                  background: "#EDF2F7",
+                  background: ink(0.05),
                   overflow: "hidden",
                 }}
               >
@@ -458,7 +463,7 @@ export default function WeeklyDevotionPanel({ data, setData }) {
                           rel="noreferrer"
                           style={{
                             textDecoration: "none",
-                            color: "#38B2AC",
+                            color: colors.steel,
                             fontWeight: 600,
                             fontSize: 13,
                           }}
@@ -493,18 +498,8 @@ export default function WeeklyDevotionPanel({ data, setData }) {
                 >
                   <button
                     onClick={() => openEdit(item)}
-                    style={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: 12,
-                      border: "none",
-                      background: "rgba(255,255,255,0.9)",
-                      backdropFilter: "blur(8px)",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
+                    style={btnStyles.overlay}
+                    title="Edit"
                   >
                     <Icon.Edit />
                   </button>
@@ -513,17 +508,10 @@ export default function WeeklyDevotionPanel({ data, setData }) {
                     onClick={() => setDeleteTarget(item)}
                     disabled={deletingFiles}
                     style={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: 12,
-                      border: "none",
-                      background: "rgba(255,255,255,0.9)",
-                      cursor: deletingFiles ? "not-allowed" : "pointer",
-                      opacity: deletingFiles ? 0.5 : 1,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
+                      ...btnStyles.overlayDanger,
+                      ...(deletingFiles && btnStyles.disabled),
                     }}
+                    title="Delete"
                   >
                     <Icon.Trash />
                   </button>
@@ -670,7 +658,7 @@ export default function WeeklyDevotionPanel({ data, setData }) {
       {/* MODAL */}
       <Modal
         isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => !uploading && setModalOpen(false)}
         title={editing ? "Edit File" : "Upload File"}
         icon={<Icon.Folder />}
         width={560}
@@ -806,44 +794,13 @@ export default function WeeklyDevotionPanel({ data, setData }) {
           </Field>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: 10,
-            marginTop: 24,
-          }}
-        >
-          <button
-            onClick={() => setModalOpen(false)}
-            style={{
-              padding: "10px 16px",
-              borderRadius: 12,
-              border: "1px solid #D1D5DB",
-              background: "#fff",
-              cursor: "pointer",
-            }}
-          >
-            Cancel
-          </button>
-
-          <button
-            onClick={save}
-            disabled={uploading}
-            style={{
-              padding: "10px 18px",
-              borderRadius: 12,
-              border: "none",
-              background: "#093C5D",
-              color: "#fff",
-              cursor: "pointer",
-              minWidth: 150,
-              fontWeight: 600,
-            }}
-          >
-            {uploading ? "Uploading..." : "Save File"}
-          </button>
-        </div>
+        <ModalFooter
+          onClose={() => setModalOpen(false)}
+          onSave={save}
+          saveLabel="Save File"
+          loading={uploading}
+          loadingLabel="Uploading…"
+        />
       </Modal>
 
       {/* DELETE */}
@@ -852,13 +809,8 @@ export default function WeeklyDevotionPanel({ data, setData }) {
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => remove(deleteTarget)}
         itemName={deleteTarget?.title}
+        loading={deletingFiles}
       />
-
-      {deletingFiles && (
-        <p style={{ color: "#E53E3E", fontWeight: 600, marginTop: 10 }}>
-          Deleting file...
-        </p>
-      )}
     </div>
   );
 }

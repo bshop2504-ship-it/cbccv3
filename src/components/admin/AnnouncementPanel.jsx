@@ -1,11 +1,9 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Icon } from "../../assets/svg/Icon";
 import { motion } from "framer-motion";
 import {
   Field,
   Input,
-  Select,
-  ImagePicker,
   Modal,
   ConfirmDelete,
   btnStyles,
@@ -14,21 +12,26 @@ import {
   SectionHeader,
   ModalFooter,
   EmptyState,
-  tagStyle,
+  LoadingState,
   tableStyles,
   formGrid,
 } from "../AdminSharedSubComponents";
+import { useToast } from "../../hooks/useToast";
 import { createAnnouncement } from "../../api/announce/create";
 import { fetchAnnouncements } from "../../api/announce/read";
 import { updateAnnouncement } from "../../api/announce/update";
 import { deleteAnnouncement } from "../../api/announce/delete";
 export default function AnnouncementPanel() {
+  const toast = useToast();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ description: "", title: "" });
   const [errors, setErrors] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const openAdd = () => {
     setEditing(null);
@@ -50,18 +53,17 @@ export default function AnnouncementPanel() {
   const validate = () => {
     const e = {};
 
-    if (!form.description.trim())
-      e.description = "description text is required";
-    if (!form.title.trim()) e.title = "Bible title is required";
+    if (!form.description.trim()) e.description = "Description is required";
+    if (!form.title.trim()) e.title = "Title is required";
     return e;
   };
+  // Reload after a save/delete (initial load is in the effect below)
   const loadAnnouncements = async () => {
     try {
       const result = await fetchAnnouncements();
       setData(result || []);
     } catch (err) {
-      console.error("Failed to load announcements:", err);
-      setData([]);
+      toast.error(err, "Couldn't load announcements");
     }
   };
   const save = async () => {
@@ -72,6 +74,8 @@ export default function AnnouncementPanel() {
       return;
     }
 
+    setSaving(true);
+
     try {
       if (editing) {
         await updateAnnouncement({
@@ -79,8 +83,6 @@ export default function AnnouncementPanel() {
           title: form.title,
           description: form.description,
         });
-        console.log("EDITING ID:", editing.id);
-        console.log("TYPE:", typeof editing.id);
       } else {
         await createAnnouncement({
           title: form.title,
@@ -90,30 +92,45 @@ export default function AnnouncementPanel() {
 
       await loadAnnouncements();
 
+      toast.success(editing ? "Announcement updated" : "Announcement posted");
       setModalOpen(false);
       setForm({ title: "", description: "" });
       setErrors({});
       setEditing(null);
     } catch (err) {
-      console.error(err);
-      alert(err.message || "Failed to save announcement");
+      toast.error(err, "Couldn't save the announcement");
+    } finally {
+      setSaving(false);
     }
   };
 
   useEffect(() => {
-    loadAnnouncements();
-  }, []);
+    let ignore = false;
+
+    fetchAnnouncements()
+      .then((result) => !ignore && setData(result || []))
+      .catch((err) => !ignore && toast.error(err, "Couldn't load announcements"))
+      .finally(() => !ignore && setLoading(false));
+
+    return () => {
+      ignore = true;
+    };
+  }, [toast]);
 
   const remove = async (id) => {
+    setDeleting(true);
+
     try {
       await deleteAnnouncement(id);
 
       await loadAnnouncements();
 
+      toast.success("Announcement deleted");
       setDeleteTarget(null);
     } catch (err) {
-      console.error(err);
-      alert(err.message || "Failed to delete announcement");
+      toast.error(err, "Couldn't delete the announcement");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -178,16 +195,11 @@ export default function AnnouncementPanel() {
                   </td>
 
                   <td style={{ ...tableStyles.td, textAlign: "right" }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 6,
-                        justifyContent: "flex-end",
-                      }}
-                    >
+                    <div style={tableStyles.actions}>
                       <button
                         style={btnStyles.iconBtn}
                         onClick={() => openEdit(item)}
+                        title="Edit"
                       >
                         <Icon.Edit />
                       </button>
@@ -195,6 +207,7 @@ export default function AnnouncementPanel() {
                       <button
                         style={btnStyles.danger}
                         onClick={() => setDeleteTarget(item)}
+                        title="Delete"
                       >
                         <Icon.Trash />
                       </button>
@@ -205,13 +218,17 @@ export default function AnnouncementPanel() {
             })}
           </tbody>
         </table>
-        {data.length === 0 && <EmptyState label="No announcement yet" />}
+        {loading ? (
+          <LoadingState label="Loading announcements…" />
+        ) : (
+          data.length === 0 && <EmptyState label="No announcements yet" />
+        )}
       </div>
 
       <Modal
         isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title={editing ? "Edit Devotion" : "Add Devotion"}
+        onClose={() => !saving && setModalOpen(false)}
+        title={editing ? "Edit Announcement" : "Add Announcement"}
         icon={<Icon.Book />}
       >
         <div style={formGrid(1)}>
@@ -221,7 +238,7 @@ export default function AnnouncementPanel() {
               onChange={(e) =>
                 setForm((f) => ({ ...f, title: e.target.value }))
               }
-              placeholder="Annoucement Title"
+              placeholder="Announcement title"
             />
           </Field>
           <Field label="Description" required error={errors.description}>
@@ -235,7 +252,11 @@ export default function AnnouncementPanel() {
             />
           </Field>
         </div>
-        <ModalFooter onClose={() => setModalOpen(false)} onSave={save} />
+        <ModalFooter
+          onClose={() => setModalOpen(false)}
+          onSave={save}
+          loading={saving}
+        />
       </Modal>
 
       <ConfirmDelete
@@ -243,6 +264,7 @@ export default function AnnouncementPanel() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => remove(deleteTarget?.id)}
         itemName={deleteTarget?.title}
+        loading={deleting}
       />
     </div>
   );

@@ -13,8 +13,10 @@ import { fetchCurrentUser } from "../api/currentUser.js";
 import { loginAccount } from "../api/auth.js";
 import { forgotPassword } from "../api/auth.js";
 import { supabase } from "../lib/supabaseClient";
+import { useToast } from "../hooks/useToast";
 export default function LoginModal({ onClose, onLogin }) {
   const navigate = useNavigate();
+  const toast = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -49,7 +51,7 @@ export default function LoginModal({ onClose, onLogin }) {
 
       const role = currentUser.role;
 
-      console.log("ROLE:", role);
+      toast.success(`Welcome back${currentUser.name ? `, ${currentUser.name}` : ""}!`);
 
       onLogin?.(session.user, session, role);
       onClose?.();
@@ -76,8 +78,9 @@ export default function LoginModal({ onClose, onLogin }) {
       return;
     }
     try {
-      const result = await forgotPassword(email);
-      setError(result.message || "Password reset email sent");
+      await forgotPassword(email);
+      setError("");
+      toast.success(`Password reset link sent to ${email}`);
     } catch (err) {
       setError(err.message || "Failed to send reset email");
     }

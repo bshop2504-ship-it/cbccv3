@@ -24,19 +24,25 @@ import {
   SectionHeader,
   ModalFooter,
   EmptyState,
+  LoadingState,
   tagStyle,
   tableStyles,
   formGrid,
 } from "../AdminSharedSubComponents";
+import { useToast } from "../../hooks/useToast";
+import { colors } from "../../lib/theme";
 
 const ROLES = ["Editor", "Elder", "Super Admin"];
 
 export default function AdminPanel({ data, setData }) {
+  const toast = useToast();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [errors, setErrors] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [deleting, setDeleting] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
 
   const empty = {
@@ -55,6 +61,8 @@ export default function AdminPanel({ data, setData }) {
     const loadUsers = async () => {
       const result = await fetchUsers();
       if (result.success) setData(result.users);
+      else toast.error(result.error, "Couldn't load users");
+      setLoadingUsers(false);
     };
 
     loadUsers();
@@ -128,6 +136,7 @@ export default function AdminPanel({ data, setData }) {
         const refreshed = await fetchUsers();
         if (refreshed.success) setData(refreshed.users);
 
+        toast.success(`${form.name || "User"} updated`);
         setModalOpen(false);
         setEditing(null);
         return;
@@ -156,11 +165,11 @@ export default function AdminPanel({ data, setData }) {
         },
       ]);
 
+      toast.success(`${form.name} added as ${form.role}`);
       setModalOpen(false);
       setForm(empty);
     } catch (err) {
-      console.error("SAVE ERROR:", err);
-      alert(err.message);
+      toast.error(err, "Couldn't save the user");
     } finally {
       setLoading(false);
     }
@@ -170,6 +179,8 @@ export default function AdminPanel({ data, setData }) {
   // DELETE (SUPER ADMIN ONLY)
   // =====================
   const remove = async (item) => {
+    setDeleting(true);
+
     try {
       if (!currentUser?.auth_id) {
         throw new Error("User not loaded");
@@ -182,10 +193,12 @@ export default function AdminPanel({ data, setData }) {
       const refreshed = await fetchUsers();
       if (refreshed.success) setData(refreshed.users);
 
+      toast.success(`${item.name || "User"} deleted`);
       setDeleteTarget(null);
     } catch (err) {
-      console.error(err);
-      alert(err.message);
+      toast.error(err, "Couldn't delete the user");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -193,9 +206,9 @@ export default function AdminPanel({ data, setData }) {
   // UI HELPERS
   // =====================
   const roleColor = {
-    "Super Admin": "#E53E3E",
-    Editor: "#6FD1D7",
-    Elder: "#c7d76f",
+    "Super Admin": colors.danger,
+    Editor: colors.aqua,
+    Elder: colors.steel,
   };
 
   const avatar = (name = "") =>
@@ -288,37 +301,48 @@ export default function AdminPanel({ data, setData }) {
                 </td>
 
                 <td style={tableStyles.td}>
-                  <button
-                    onClick={() => openEdit(item)}
-                    style={btnStyles.iconBtn}
-                  >
-                    <Icon.Edit />
-                  </button>
-                  <button
-                    disabled={!isReady}
-                    style={btnStyles.danger}
-                    onClick={() => setDeleteTarget(item)}
-                  >
-                    <Icon.Trash />
-                  </button>
+                  <div style={{ ...tableStyles.actions, justifyContent: "flex-start" }}>
+                    <button
+                      onClick={() => openEdit(item)}
+                      style={btnStyles.iconBtn}
+                      title="Edit"
+                    >
+                      <Icon.Edit />
+                    </button>
+                    <button
+                      disabled={!isReady}
+                      style={{
+                        ...btnStyles.danger,
+                        ...(!isReady && btnStyles.disabled),
+                      }}
+                      onClick={() => setDeleteTarget(item)}
+                      title="Delete"
+                    >
+                      <Icon.Trash />
+                    </button>
+                  </div>
                 </td>
               </motion.tr>
             ))}
           </tbody>
         </table>
 
-        {data.length === 0 && <EmptyState label="No admins yet" />}
+        {loadingUsers ? (
+          <LoadingState label="Loading users…" />
+        ) : (
+          data.length === 0 && <EmptyState label="No admins yet" />
+        )}
       </div>
 
       {/* MODAL */}
       <Modal
         icon={<Icon.Users />}
         isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => !loading && setModalOpen(false)}
         title={editing ? "Edit Admin" : "Add Admin"}
       >
         <div style={formGrid(1)}>
-          <Field label="Full Name" error={errors.name}>
+          <Field label="Full Name" required error={errors.name}>
             <Input
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
@@ -327,7 +351,7 @@ export default function AdminPanel({ data, setData }) {
           </Field>
 
           {!editing && (
-            <Field label="Email" error={errors.email}>
+            <Field label="Email" required error={errors.email}>
               <Input
                 value={form.email}
                 disabled={!!editing}
@@ -339,7 +363,7 @@ export default function AdminPanel({ data, setData }) {
             </Field>
           )}
           {!editing && (
-            <Field label="Password" error={errors.password}>
+            <Field label="Password" required error={errors.password}>
               <Input
                 type="password"
                 value={form.password}
@@ -350,7 +374,7 @@ export default function AdminPanel({ data, setData }) {
             </Field>
           )}
 
-          <Field label="Role" error={errors.role}>
+          <Field label="Role" required error={errors.role}>
             <Select
               value={form.role}
               onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
@@ -363,7 +387,7 @@ export default function AdminPanel({ data, setData }) {
           onClose={() => setModalOpen(false)}
           onSave={save}
           saveLabel={editing ? "Update" : "Create"}
-          disabled={loading}
+          loading={loading}
         />
       </Modal>
 
@@ -373,6 +397,7 @@ export default function AdminPanel({ data, setData }) {
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => remove(deleteTarget)}
         itemName={deleteTarget?.name}
+        loading={deleting}
       />
     </div>
   );

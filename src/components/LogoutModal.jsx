@@ -3,9 +3,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { XIcon, CrossIcon } from "../assets/svg/Icons.jsx";
 import { supabase } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "../hooks/useToast";
 
 export default function LogoutModal({ isOpen, onClose }) {
   const navigate = useNavigate();
+  const toast = useToast();
   const [loading, setLoading] = useState(false);
 
   const handleLogout = async () => {
@@ -18,8 +20,9 @@ export default function LogoutModal({ isOpen, onClose }) {
 
       // redirect to login page
       navigate("/");
+      toast.info("You've been logged out");
     } catch (err) {
-      console.error("Logout error:", err);
+      toast.error(err, "Couldn't log out. Please try again.");
     } finally {
       setLoading(false);
     }

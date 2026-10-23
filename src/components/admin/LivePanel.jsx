@@ -12,20 +12,26 @@ import {
   SectionHeader,
   ModalFooter,
   EmptyState,
+  LoadingState,
   tableStyles,
   formGrid,
 } from "../AdminSharedSubComponents";
+import { useToast } from "../../hooks/useToast";
 import { createLiveStream } from "../../api/livestream/create";
 import { fetchLiveStreams } from "../../api/livestream/read";
 import { updateLiveStream } from "../../api/livestream/update";
 import { deleteLiveStream } from "../../api/livestream/delete";
 export default function LivePanel({ data, setData }) {
+  const toast = useToast();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const empty = { title: "", description: "", pastor: "", link: "" };
   const [form, setForm] = useState(empty);
   const [errors, setErrors] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const openAdd = () => {
     setEditing(null);
@@ -56,6 +62,8 @@ export default function LivePanel({ data, setData }) {
       return;
     }
 
+    setSaving(true);
+
     try {
       let res;
 
@@ -69,22 +77,22 @@ export default function LivePanel({ data, setData }) {
       }
 
       if (!res.success) {
-        console.error(res.error);
+        toast.error(res.error, "Couldn't save the live stream");
         return;
       }
 
       await loadLiveStreams();
 
+      toast.success(editing ? "Live stream updated" : "Live stream added");
       setModalOpen(false);
       setForm(empty);
       setEditing(null);
     } catch (err) {
-      console.error(err);
+      toast.error(err, "Couldn't save the live stream");
+    } finally {
+      setSaving(false);
     }
   };
-  useEffect(() => {
-    loadLiveStreams();
-  }, []);
 
   const loadLiveStreams = async () => {
     const res = await fetchLiveStreams();
@@ -92,19 +100,31 @@ export default function LivePanel({ data, setData }) {
     if (res.success) {
       setData(res.data);
     } else {
-      console.error(res.error);
+      toast.error(res.error, "Couldn't load live streams");
     }
+
+    setLoading(false);
   };
+
+  useEffect(() => {
+    loadLiveStreams();
+  }, []);
+
   const remove = async (id) => {
+    setDeleting(true);
+
     const res = await deleteLiveStream(id);
 
+    setDeleting(false);
+
     if (!res.success) {
-      console.error(res.error);
+      toast.error(res.error, "Couldn't delete the live stream");
       return;
     }
 
     await loadLiveStreams();
 
+    toast.success("Live stream deleted");
     setDeleteTarget(null);
   };
 
@@ -205,22 +225,18 @@ export default function LivePanel({ data, setData }) {
                   </span>
                 </td>
                 <td style={{ ...tableStyles.td, textAlign: "right" }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 6,
-                      justifyContent: "flex-end",
-                    }}
-                  >
+                  <div style={tableStyles.actions}>
                     <button
                       style={btnStyles.iconBtn}
                       onClick={() => openEdit(item)}
+                      title="Edit"
                     >
                       <Icon.Edit />
                     </button>
                     <button
                       style={btnStyles.danger}
                       onClick={() => setDeleteTarget(item)}
+                      title="Delete"
                     >
                       <Icon.Trash />
                     </button>
@@ -230,12 +246,16 @@ export default function LivePanel({ data, setData }) {
             ))}
           </tbody>
         </table>
-        {data.length === 0 && <EmptyState label="No live streams yet" />}
+        {loading ? (
+          <LoadingState label="Loading live streams…" />
+        ) : (
+          data.length === 0 && <EmptyState label="No live streams yet" />
+        )}
       </div>
 
       <Modal
         isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => !saving && setModalOpen(false)}
         title={editing ? "Edit Live Stream" : "Add Live Stream"}
         icon={<Icon.Radio />}
       >
@@ -280,7 +300,11 @@ export default function LivePanel({ data, setData }) {
             />
           </Field>
         </div>
-        <ModalFooter onClose={() => setModalOpen(false)} onSave={save} />
+        <ModalFooter
+          onClose={() => setModalOpen(false)}
+          onSave={save}
+          loading={saving}
+        />
       </Modal>
 
       <ConfirmDelete
@@ -288,6 +312,7 @@ export default function LivePanel({ data, setData }) {
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => remove(deleteTarget?.id)}
         itemName={deleteTarget?.title}
+        loading={deleting}
       />
     </div>
   );

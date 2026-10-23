@@ -12,14 +12,19 @@ import {
 import {
   SectionHeader,
   ModalFooter,
+  EmptyState,
+  LoadingState,
   formGrid,
 } from "../AdminSharedSubComponents";
+import { useToast } from "../../hooks/useToast";
+import { colors } from "../../lib/theme";
 
 import { createRecentActivity } from "../../api/recentActivity/create";
 import { fetchRecentActivities } from "../../api/recentActivity/read";
 import { updateRecentActivity } from "../../api/recentActivity/update";
 import { deleteRecentActivity } from "../../api/recentActivity/delete";
 export default function ActivitiesPanel({ data, setData }) {
+  const toast = useToast();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
 
@@ -34,9 +39,9 @@ export default function ActivitiesPanel({ data, setData }) {
   const [form, setForm] = useState(empty);
   const [errors, setErrors] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  const uid = () => Date.now() + Math.random();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const openAdd = () => {
     setEditing(null);
@@ -69,7 +74,7 @@ export default function ActivitiesPanel({ data, setData }) {
       return;
     }
 
-    setLoading(true);
+    setSaving(true);
 
     try {
       // EDIT MODE
@@ -85,8 +90,7 @@ export default function ActivitiesPanel({ data, setData }) {
         });
 
         if (!result.success) {
-          console.error(result.error);
-          setLoading(false);
+          toast.error(result.error, "Couldn't update the activity");
           return;
         }
 
@@ -106,14 +110,14 @@ export default function ActivitiesPanel({ data, setData }) {
         });
 
         if (!result.success) {
-          console.error(result.error);
-
-          setLoading(false);
+          toast.error(result.error, "Couldn't add the activity");
           return;
         }
 
         setData((prev) => [result.data[0], ...prev]);
       }
+
+      toast.success(editing ? "Activity updated" : "Activity added");
 
       // Reset modal
       setModalOpen(false);
@@ -121,10 +125,10 @@ export default function ActivitiesPanel({ data, setData }) {
       setEditing(null);
       setErrors({});
     } catch (err) {
-      console.error(err);
+      toast.error(err, "Couldn't save the activity");
+    } finally {
+      setSaving(false);
     }
-
-    setLoading(false);
   };
   useEffect(() => {
     const loadActivities = async () => {
@@ -133,37 +137,36 @@ export default function ActivitiesPanel({ data, setData }) {
       if (result.success) {
         setData(result.data);
       } else {
-        console.error("Failed to load activities:", result.error);
+        toast.error(result.error, "Couldn't load activities");
       }
+
+      setLoading(false);
     };
 
     loadActivities();
-  }, [setData]);
+  }, [setData, toast]);
 
   const remove = async (item) => {
-    if (!item?.id) {
-      console.error("Missing ID:", item);
-      return;
-    }
+    if (!item?.id) return;
 
-    setLoading(true);
+    setDeleting(true);
 
     const result = await deleteRecentActivity({
       id: item.id,
       img: item.img, // 👈 REQUIRED for storage deletion
     });
 
+    setDeleting(false);
+
     if (!result.success) {
-      console.error(result.error);
-      setLoading(false);
+      toast.error(result.error, "Couldn't delete the activity");
       return;
     }
 
     // remove from UI
     setData((d) => d.filter((x) => x.id !== item.id));
+    toast.success("Activity deleted");
     setDeleteTarget(null);
-
-    setLoading(false);
   };
 
   return (
@@ -176,9 +179,19 @@ export default function ActivitiesPanel({ data, setData }) {
         addLabel="Add Activity"
       />
 
+      {loading && <LoadingState label="Loading activities…" />}
+
+      {!loading && data.length === 0 && (
+        <EmptyState
+          icon={<Icon.Camera />}
+          title="No activities yet"
+          subtitle="Add photos and highlights from church activities."
+        />
+      )}
+
       <div
         style={{
-          display: "grid",
+          display: loading ? "none" : "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
           gap: 14,
         }}
@@ -204,7 +217,7 @@ export default function ActivitiesPanel({ data, setData }) {
                 height: 140,
                 background: item.img
                   ? `url(${item.img}) center/cover`
-                  : "linear-gradient(135deg, #093C5D, #3B7597)",
+                  : `linear-gradient(135deg, ${colors.navy}, ${colors.steel})`,
                 position: "relative",
               }}
             >
@@ -234,22 +247,16 @@ export default function ActivitiesPanel({ data, setData }) {
               >
                 <button
                   onClick={() => openEdit(item)}
-                  style={{
-                    ...btnStyles.iconBtn,
-                    background: "rgba(255,255,255,0.9)",
-                    borderColor: "transparent",
-                  }}
+                  style={btnStyles.overlay}
+                  title="Edit"
                 >
                   <Icon.Edit />
                 </button>
 
                 <button
                   onClick={() => setDeleteTarget(item)}
-                  style={{
-                    ...btnStyles.danger,
-                    background: "rgba(255,255,255,0.9)",
-                    borderColor: "transparent",
-                  }}
+                  style={btnStyles.overlayDanger}
+                  title="Delete"
                 >
                   <Icon.Trash />
                 </button>
@@ -364,7 +371,7 @@ export default function ActivitiesPanel({ data, setData }) {
       {/* MODAL */}
       <Modal
         isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => !saving && setModalOpen(false)}
         title={editing ? "Edit Activity" : "Add Activity"}
         icon={<Icon.Camera />}
         width={560}
@@ -439,7 +446,7 @@ export default function ActivitiesPanel({ data, setData }) {
         <ModalFooter
           onClose={() => setModalOpen(false)}
           onSave={save}
-          loading={loading}
+          loading={saving}
         />
       </Modal>
 
@@ -449,6 +456,7 @@ export default function ActivitiesPanel({ data, setData }) {
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => deleteTarget && remove(deleteTarget)}
         itemName={deleteTarget?.title}
+        loading={deleting}
       />
     </div>
   );

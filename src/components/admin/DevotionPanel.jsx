@@ -1,11 +1,9 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Icon } from "../../assets/svg/Icon";
 import {
   Field,
   Input,
-  Select,
-  ImagePicker,
   Modal,
   ConfirmDelete,
   btnStyles,
@@ -14,10 +12,12 @@ import {
   SectionHeader,
   ModalFooter,
   EmptyState,
+  LoadingState,
   tagStyle,
   tableStyles,
   formGrid,
 } from "../AdminSharedSubComponents";
+import { useToast } from "../../hooks/useToast";
 
 import { createVerse } from "../../api/dailydevotion/create";
 import { fetchVerses } from "../../api/dailydevotion/read";
@@ -26,6 +26,7 @@ import { deleteVerse } from "../../api/dailydevotion/delete";
 
 // ─── PANEL: Daily Devotion ─────────────────────────────────────────
 export default function DevotionPanel({ data, setData }) {
+  const toast = useToast();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({
@@ -36,26 +37,30 @@ export default function DevotionPanel({ data, setData }) {
 
   const [errors, setErrors] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // ─── FETCH VERSES ─────────────────────────────────────────
   useEffect(() => {
-    loadVerses();
-  }, []);
+    let ignore = false;
 
-  const loadVerses = async () => {
-    setLoading(true);
+    fetchVerses().then((result) => {
+      if (ignore) return;
 
-    const result = await fetchVerses();
+      if (result.success) {
+        setData(result.data);
+      } else {
+        toast.error(result.error, "Couldn't load devotions");
+      }
 
-    if (result.success) {
-      setData(result.data);
-    } else {
-      console.error(result.error);
-    }
+      setLoading(false);
+    });
 
-    setLoading(false);
-  };
+    return () => {
+      ignore = true;
+    };
+  }, [setData, toast]);
 
   // ─── OPEN ADD ─────────────────────────────────────────
   const openAdd = () => {
@@ -107,6 +112,8 @@ export default function DevotionPanel({ data, setData }) {
       return;
     }
 
+    setSaving(true);
+
     // UPDATE
     if (editing) {
       const result = await updateVerse({
@@ -130,9 +137,10 @@ export default function DevotionPanel({ data, setData }) {
           ),
         );
 
+        toast.success("Devotion updated");
         setModalOpen(false);
       } else {
-        console.error(result.error);
+        toast.error(result.error, "Couldn't update the devotion");
       }
     }
 
@@ -147,22 +155,30 @@ export default function DevotionPanel({ data, setData }) {
       if (result.success) {
         setData((d) => [...result.data, ...d]);
 
+        toast.success("Devotion added");
         setModalOpen(false);
       } else {
-        console.error(result.error);
+        toast.error(result.error, "Couldn't add the devotion");
       }
     }
+
+    setSaving(false);
   };
 
   // ─── DELETE ─────────────────────────────────────────
   const remove = async (id) => {
+    setDeleting(true);
+
     const result = await deleteVerse(id);
+
+    setDeleting(false);
 
     if (result.success) {
       setData((d) => d.filter((x) => x.id !== id));
+      toast.success("Devotion deleted");
       setDeleteTarget(null);
     } else {
-      console.error(result.error);
+      toast.error(result.error, "Couldn't delete the devotion");
     }
   };
 
@@ -191,21 +207,7 @@ export default function DevotionPanel({ data, setData }) {
           </thead>
 
           <tbody>
-            {loading ? (
-              <tr>
-                <td
-                  colSpan={4}
-                  style={{
-                    padding: 20,
-                    textAlign: "center",
-                    color: "#3B7597",
-                    fontWeight: 600,
-                  }}
-                >
-                  Loading...
-                </td>
-              </tr>
-            ) : (
+            {!loading &&
               data.map((item, i) => (
                 <motion.tr
                   key={item.id}
@@ -247,13 +249,7 @@ export default function DevotionPanel({ data, setData }) {
                   </td>
 
                   <td style={{ ...tableStyles.td, textAlign: "right" }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 6,
-                        justifyContent: "flex-end",
-                      }}
-                    >
+                    <div style={tableStyles.actions}>
                       <button
                         style={btnStyles.iconBtn}
                         onClick={() => openEdit(item)}
@@ -272,19 +268,20 @@ export default function DevotionPanel({ data, setData }) {
                     </div>
                   </td>
                 </motion.tr>
-              ))
-            )}
+              ))}
           </tbody>
         </table>
 
-        {!loading && data.length === 0 && (
-          <EmptyState label="No devotions yet" />
+        {loading ? (
+          <LoadingState label="Loading devotions…" />
+        ) : (
+          data.length === 0 && <EmptyState label="No devotions yet" />
         )}
       </div>
 
       <Modal
         isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={() => !saving && setModalOpen(false)}
         title={editing ? "Edit Devotion" : "Add Devotion"}
         icon={<Icon.Book />}
       >
@@ -330,7 +327,11 @@ export default function DevotionPanel({ data, setData }) {
           </Field>
         </div>
 
-        <ModalFooter onClose={() => setModalOpen(false)} onSave={save} />
+        <ModalFooter
+          onClose={() => setModalOpen(false)}
+          onSave={save}
+          loading={saving}
+        />
       </Modal>
 
       <ConfirmDelete
@@ -338,6 +339,7 @@ export default function DevotionPanel({ data, setData }) {
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => remove(deleteTarget?.id)}
         itemName={deleteTarget?.word}
+        loading={deleting}
       />
     </div>
   );

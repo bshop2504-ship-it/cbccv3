@@ -2,7 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { EyeIcon, EyeOffIcon } from "../assets/svg/Icons";
 import { supabase } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "../hooks/useToast";
+import { colors } from "../lib/theme";
 export default function ResetPassword() {
+  const toast = useToast();
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -20,7 +23,13 @@ export default function ResetPassword() {
   };
   const score = Object.values(checks).filter(Boolean).length;
   const strengthLabel = ["", "Weak", "Fair", "Good", "Strong"][score];
-  const strengthColor = ["", "#e05252", "#f0a500", "#3B7597", "#6FD1D7"][score];
+  const strengthColor = [
+    "",
+    colors.danger,
+    colors.warning,
+    colors.steel,
+    colors.aqua,
+  ][score];
   const strengthWidth = ["0%", "25%", "50%", "75%", "100%"][score];
 
   const canSubmit = score === 4;
@@ -41,15 +50,15 @@ export default function ResetPassword() {
       });
 
       if (error) {
-        alert(error.message);
+        toast.error(error, "Couldn't update your password");
         setStatus("idle");
         return;
       }
 
       setStatus("success");
+      toast.success("Password updated");
     } catch (err) {
-      console.error(err);
-      alert("Something went wrong");
+      toast.error(err, "Couldn't update your password");
       setStatus("idle");
     }
   };
