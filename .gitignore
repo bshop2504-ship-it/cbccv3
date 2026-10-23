@@ -24,3 +24,8 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# Environment (real values live in Vercel project settings)
+.env
+.env.*
+!.env.example

@@ -1,10 +1,9 @@
+import { supabase } from "../../lib/supabaseClient";
+
 export const updateElderFile = async ({
   id,
   title,
   description,
-
-  // old file
-  old_file_path,
 
   // new file
   file,
@@ -13,11 +12,18 @@ export const updateElderFile = async ({
   mime_type,
 }) => {
   try {
+    const { data: sessionData } = await supabase.auth.getSession();
+
+    const token = sessionData?.session?.access_token;
+
+    if (!token) {
+      throw new Error("No session found");
+    }
+
     const payload = {
       id,
       title,
       description,
-      old_file_path,
     };
 
     // ONLY INCLUDE FILE DATA IF USER REPLACED FILE
@@ -32,6 +38,7 @@ export const updateElderFile = async ({
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(payload),
     });
